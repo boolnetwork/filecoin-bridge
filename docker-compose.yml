@@ -1,0 +1,17 @@
+version: "3.2"
+
+services:
+  dev:
+    container_name: filecoin-bridge
+    image: paritytech/ci-linux:production
+    working_dir: /var/www/filecoin-bridge
+    ports:
+      - "9944:9944"
+    environment:
+      - CARGO_HOME=/var/www/filecoin-bridge/.cargo
+    volumes:
+      - .:/var/www/filecoin-bridge
+      - type: bind
+        source: ./.local
+        target: /root/.local
+    command: bash -c "cargo build --release && ./target/release/filecoin-bridge --dev --ws-external"
