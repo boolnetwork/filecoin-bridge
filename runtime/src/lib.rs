@@ -40,7 +40,9 @@ pub use frame_support::{
 
 /// Import the template pallet.
 pub use pallet_template;
-
+pub use pallet_tss;
+pub mod apis;
+pub use apis::*;
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -266,6 +268,24 @@ impl pallet_template::Trait for Runtime {
 	type Event = Event;
 }
 
+impl pallet_tss::Trait for Runtime {
+	type Event = Event;
+}
+//
+//impl pallet_feed::Trait for Runtime {
+//	type Event = Event;
+//}
+//
+//impl pallet_token::Trait for Runtime {
+//	type Event = Event;
+//	type Token = Token;
+//	type Currency = Balances;
+//	type CurrencyToVote = CurrencyToTokenHandler;
+//}
+
+//impl pallet_witness::Trait for Runtime {
+//	type Event = Event;
+//}
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -283,6 +303,10 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
+//		Witness: pallet_witness::{Module, Call, Storage, Event<T>, Config},
+//		Token: pallet_token::{Module, Call, Storage, Event<T>, Config},
+//		Feed: pallet_feed::{Module, Call, Storage, Event<T>, Config<T>},
+       	Tss: pallet_tss::{Module, Call, Storage, Event<T>},
 	}
 );
 
@@ -310,6 +334,9 @@ pub type SignedExtra = (
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -477,4 +504,30 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	 impl apis::VendorApi<Block> for Runtime {
+	    fn account_nonce(account: &AccountId) -> u64 {
+	    	System::account_nonce(account).into()
+	    }
+
+	    fn is_tss_party(id: &AccountId ) -> bool {
+		    Tss::members().contains(id)
+	    }
+
+	    fn tss_pub_key() -> Vec<u8>{
+	    	Tss::tss_pubkey()
+	    }
+
+	    fn tss_pub_key_bool() -> Vec<u8>{
+	    	Tss::tss_pubkey_bool()
+	    }
+
+	    fn tss_pub_key_fc() -> Vec<u8>{
+			Tss::tss_pubkey_fc()
+		}
+
+		fn tss_url() -> Vec<u8>{
+			Tss::tss_url()
+		}
+   	}
 }

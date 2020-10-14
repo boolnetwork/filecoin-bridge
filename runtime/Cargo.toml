@@ -54,6 +54,13 @@ sp-std = { default-features = false, version = '2.0.0' }
 sp-transaction-pool = { default-features = false, version = '2.0.0' }
 sp-version = { default-features = false, version = '2.0.0' }
 
+#pallet-token = { default-features = false, version = '2.0.0', path = '../pallets/token' }
+pallet-tss = { default-features = false, version = '2.0.0', path = '../pallets/tss' }
+#pallet-feed = { default-features = false, version = '2.0.0', path = '../pallets/feed' }
+#pallet-witness = { default-features = false, version = '2.0.0', path = '../pallets/witness' }
+node-primitives = { version = "2.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+
+
 [features]
 default = ['std']
 runtime-benchmarks = [
@@ -93,4 +100,5 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
+    "pallet-tss/std"
 ]

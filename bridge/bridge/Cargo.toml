@@ -1,0 +1,60 @@
+[package]
+name = "bridge"
+version = "0.0.1"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+license = "GPL-3.0"
+homepage = "https://substrate.dev"
+repository = "https://github.com/paritytech/substrate/"
+description = "Substrate authority discovery."
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "1.2.0", features = ["derive"] }
+sp-consensus-babe = { version = "0.8.0" }
+sp-core = { default-features = false, version = '2.0.0' }
+sp-application-crypto = { default-features = false, version = '2.0.0' }
+num-bigint = "0.2.3"
+num-rational = "0.2.2"
+num-traits = "0.2.8"
+serde = { version = "1.0.104", features = ["derive"] }
+sp-version = { default-features = false, version = '2.0.0' }
+sp-io = { default-features = false, version = '2.0.0' }
+sp-inherents = { default-features = false, version = '2.0.0' }
+sp-timestamp = { default-features = false, version = '2.0.0' }
+sc-telemetry = { default-features = false, version = '2.0.0' }
+sc-keystore = { default-features = false, version = '2.0.0' }
+sc-client-api = { default-features = false, version = '2.0.0' }
+#sc-client = { version = "0.8.0-rc6", git = "https://github.com/paritytech/substrate.git" }
+sp-api = { default-features = false, version = '2.0.0' }
+sc-block-builder = { version = "0.8.0" }
+sp-block-builder = { default-features = false, version = '2.0.0' }
+sp-blockchain = { default-features = false, version = '2.0.0' }
+sp-runtime = { default-features = false, version = '2.0.0' }
+fork-tree = { default-features = false, version = '2.0.0' }
+futures = "0.3.1"
+futures-timer = "3.0.1"
+parking_lot = "0.10.0"
+log = "0.4.8"
+schnorrkel = { version = "0.8.5", features = ["preaudit_deprecated"] }
+rand = "0.7.2"
+merlin = "1.2.1"
+pdqselect = "0.1.0"
+derive_more = "0.99.2"
+sp-transaction-pool = { default-features = false, version = '2.0.0' }
+
+filecoin-bridge-runtime = { version = "2.0.0", path = "../../runtime" }
+node-primitives = { version = "2.0.0",  git = "https://github.com/paritytech/substrate.git" }
+node-tss = {version = "0.0.1",  path = "../../bridge/tss"}
+pallet-tss = { version = "2.0.0", default-features = false,  path = "../../pallets/tss"}
+tss-signer = {version = "2.0.0",  path = "../../bridge/tss-signer"}
+
+frame-system = { version = "2.0.0", default-features = false }
+pallet-transaction-payment = { version = "2.0.0", default-features = false }
+libsecp256k1 = "0.2.2"
+sp-std = { version = "2.0.0", default-features = false }
+hex-literal = "0.2.1"
+#plum_message = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
+lotus-api = { version = "0.1.0", git = "https://github.com/Kayryu/lotus-api" }
+tokio = { version = "0.2.5", features = ["macros"] }
+
+#subkey = { version = "2.0.0",git = "https://github.com/paritytech/substrate.git"}

@@ -1,0 +1,31 @@
+[package]
+name = "class_group"
+version = "0.4.18"
+authors = ["omershlo <omer.shlomovits@gmail.com>"]
+edition = "2018"
+links = "libpari"
+build = "build.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[build-dependencies]
+bindgen = "0.54"
+
+[dependencies]
+libc = "0.2.0"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[dependencies.curv]
+git = "https://github.com/KZen-networks/curv"
+tag = "v0.2.6"
+features =  ["ec_secp256k1"]
+
+[dev-dependencies]
+criterion = ">=0.2"
+rug = "1.2.1"
+sha2 = "0.9.1"
+
+[[bench]]
+name = "bench-vdf-class"
+path = "benches/vdf/class_group.rs"
+harness = false

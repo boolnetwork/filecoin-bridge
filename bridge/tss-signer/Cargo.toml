@@ -1,0 +1,31 @@
+[package]
+name = "tss-signer"
+version = "2.0.0"
+authors = ["prz23"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+# bitcoin-rust
+chain = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+btprimitives = { branch = "sub2.0", package = "primitives", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+serialization = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+bitcrypto = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+script = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+keys = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust", default-features = false }
+merkle = { branch = "sub2.0", git = "https://github.com/ABMatrix/merkle.git", default-features = false }
+bit-vec =  { git = "https://github.com/ABMatrix/bit-vec.git", default-features = false }
+rustc-hex = { version = "2" }
+base58 = { version = "0.1" }
+libsecp256k1 = {version = "0.2.2", package = "libsecp256k1"}
+secp256k1 = {version = "0.15.3", package = "secp256k1"}
+lazy_static = "*"
+node-tss = {version = "0.0.1",  path = "../../bridge/tss"}
+log = "0.4.8"
+
+[dependencies.curv]
+git = "https://github.com/KZen-networks/curv"
+tag = "v0.2.6"
+features = ["ec_secp256k1"]

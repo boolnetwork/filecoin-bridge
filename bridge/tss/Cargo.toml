@@ -1,0 +1,59 @@
+[package]
+name = "node-tss"
+version = "0.0.1"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+license = "GPL-3.0"
+homepage = "https://substrate.dev"
+repository = "https://github.com/paritytech/substrate/"
+
+[dependencies]
+paillier = { git = "https://github.com/KZen-networks/rust-paillier", tag = "v0.3.4"}
+zk-paillier = { git = "https://github.com/KZen-networks/zk-paillier", tag = "v0.2.5"}
+subtle = { version = "2" }
+serde = { version = "1.0", features = ["derive"] }
+zeroize = "0.10.1"
+
+criterion = "0.3"
+rust-crypto = "0.2"
+hex = "0.4"
+rocket = { version = "0.4.2", default-features = false }
+rocket_contrib = "0.4.2"
+reqwest = { version = "0.9", default-features = false }
+uuid = { version = "0.8", features = ["v4"] }
+serde_json = "1.0"
+libsecp256k1 = "0.3.2"
+rand = "*"
+rustbreak = { git = "https://github.com/TheNeikos/rustbreak", features = ["ron_enc"] }
+bitcrypto = { branch = "sub2.0", git = "https://github.com/ABMatrix/bitcoin-rust" }
+#secp256k1 = "0.15.3"
+lru = "0.5.1"
+
+[dependencies.curv]
+git = "https://github.com/KZen-networks/curv"
+tag = "v0.2.6"
+features = ["ec_secp256k1"]
+
+[dependencies.centipede]
+git = "https://github.com/KZen-networks/centipede"
+tag = "v0.2.2"
+
+[dependencies.class_group]
+path = "../class-master"
+tag = "v0.4.18"
+optional = true
+
+[dependencies.multi-party-ecdsa]
+git = "https://github.com/KZen-networks/multi-party-ecdsa"
+version = "0.4.1"
+
+[dependencies.lazy_static]
+version = "*"
+
+[dependencies.rust-gmp]
+git = "https://github.com/KZen-networks/rust-gmp"
+version = "0.5.0"
+features = ["serde_support"]
+
+#[patch.crates-io]
+#rust-gmp = { version = "0.5.0", features = ["serde_support"], git = "https://github.com/KZen-networks/rust-gmp" }
