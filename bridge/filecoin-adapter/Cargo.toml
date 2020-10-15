@@ -35,10 +35,11 @@ tokio = { version = "0.2.5", features = ["macros"] }
 plum_message = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
 #[replace]
 #"cid:0.5.0" = { git = "https://github.com/PolkaX/rust-cid", branch = "impl-cbor-and-json" }
-forest_address = { git = "https://github.com/ChainSafe/forest" ,  branch="main" }
-forest_message = { git = "https://github.com/ChainSafe/forest" ,  branch="main" }
-forest_cid = { git = "https://github.com/ChainSafe/forest" ,  branch="main" }
-forest_bigint = { git = "https://github.com/ChainSafe/forest" ,  branch="main" }
+forest_address = { git = "https://github.com/prz23/forest" ,  branch="main" }
+forest_message = { git = "https://github.com/prz23/forest" ,  branch="main" }
+forest_cid = { git = "https://github.com/prz23/forest" ,  branch="main" }
+forest_bigint = { git = "https://github.com/prz23/forest" ,  branch="main" }
+interpreter = { git = "https://github.com/prz23/forest" ,  branch="main" }
 
 [dependencies.curv]
 git = "https://github.com/KZen-networks/curv"
