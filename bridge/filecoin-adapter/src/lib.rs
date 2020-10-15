@@ -211,7 +211,7 @@ pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: F
             let cids = ret.cids.clone();
             for cid in cids {
                 println!("cids = {:?}", cid);
-                let block_messages: interpreter::BlockMessages =
+                let block_messages: BlockMessages =
                     rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
                 println!("block_messages = {:?}", block_messages);
                 let signed_messages = block_messages.secpk_messages.clone();
