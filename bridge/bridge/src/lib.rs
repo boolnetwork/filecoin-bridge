@@ -715,7 +715,6 @@ fn send_fc_message(message:lotus_api::types::message::SignedMessage) -> lotus_ap
 	ret
 }
 
-
 #[cfg(test)]
 mod tests {
 	use super::*;

@@ -30,6 +30,7 @@ pallet-template = { path = '../pallets/template', default-features = false, vers
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '2.0.0' }
 frame-executive = { default-features = false, version = '2.0.0' }
+#frame-support = { default-features = false, version = '2.0.0', path = '../pallets/frame-support' }
 frame-support = { default-features = false, version = '2.0.0' }
 frame-system = { default-features = false, version = '2.0.0' }
 frame-system-benchmarking = { default-features = false, optional = true, version = '2.0.0' }

@@ -52,6 +52,10 @@ sp-runtime = '2.0.0'
 sp-transaction-pool = '2.0.0'
 substrate-frame-rpc-system = '2.0.0'
 
+bridge = {version = "0.0.1",  path = "../bridge/bridge"}
+node-tss = {version = "0.0.1",  path = "../bridge/tss"}
+fc-adapter ={version = "0.1.0",  path = "../bridge/filecoin-adapter"}
+
 [features]
 default = []
 runtime-benchmarks = ['filecoin-bridge-runtime/runtime-benchmarks']
