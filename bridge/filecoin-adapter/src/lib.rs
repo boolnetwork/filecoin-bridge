@@ -23,7 +23,6 @@ use curv::elliptic::curves::traits::ECScalar;
 use curv::FE;
 
 use log::{debug, info};
-use lotus_api::types::message::UnsignedMessage;
 use num_traits::cast::ToPrimitive;
 
 use futures::executor::block_on;
@@ -53,10 +52,15 @@ use lotus_api::{
     api::ChainApi, types::address::Address, types::message::BlockMessages, types::tipset::TipSet,
     Http,
 };
+use lotus_api::types::message::originAddress;
+use lotus_api::types::message::UnsignedMessage;
+
+use lotus_api_forest::{ Http as filecoin_http ,  };
+use lotus_api_forest;
+use lotus_api_forest::api::ChainApi as api2;
+
 use std::time;
 use tokio::runtime::Runtime;
-
-use lotus_api::types::message::originAddress;
 use std::collections::HashSet;
 
 use forest_address;
@@ -64,6 +68,7 @@ use forest_bigint;
 use forest_cid;
 use forest_message;
 use interpreter;
+use forest_blocks;
 
 lazy_static! {
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> = Mutex::new(vec!["test"]);
@@ -201,6 +206,9 @@ pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: F
             let mut rt = Runtime::new().unwrap();
             let http = Http::new("http://47.52.21.141:1234/rpc/v0");
             let ret: TipSet = rt.block_on(http.chain_head()).unwrap();
+
+            let http2 = filecoin_http::new("");
+            let ret2: forest_blocks::Tipset = rt.block_on(http2.chain_head()).unwrap();
 
             let new_height = ret.height as u64;
             if new_height == height {

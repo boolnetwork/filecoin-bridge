@@ -1,0 +1,43 @@
+[package]
+name = "lotus-api-forest"
+version = "0.1.0"
+authors = ["kayryu <lukayryu@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+base64 = "0.11"
+log = "0.4.8"
+derive_more = "0.99"
+async-trait = "0.1"
+serde_json = "1.0"
+jsonrpc-core = "14.0"
+thiserror = "1.0"
+data-encoding = "2.2"
+unsigned-varint = "0.3"
+libsecp256k1 = "0.3"
+serde_repr = "0.1"
+blake2b_simd = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.10", features = ["json"] }
+tokio = { version = "0.2.5", features = ["macros"] }
+
+cid = { version ="0.5", git = "https://github.com/PolkaX/rust-cid", branch = "impl-cbor-and-json-ext" }
+num-bigint = "0.3.0"
+fixed-hash = "0.6"
+
+libp2p-core = "0.21.0"
+
+num-traits = "0.2.12"
+plum_message = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
+plum_address = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
+plum_bigint = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
+plum_bytes = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
+
+forest_address = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_message = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_cid = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_bigint = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+interpreter = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }

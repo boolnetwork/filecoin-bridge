@@ -56,5 +56,5 @@ hex-literal = "0.2.1"
 #plum_message = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
 lotus-api = { version = "0.1.0", git = "https://github.com/Kayryu/lotus-api" }
 tokio = { version = "0.2.5", features = ["macros"] }
-
+lotus-api-forest ={ path = "../api" }
 #subkey = { version = "2.0.0",git = "https://github.com/paritytech/substrate.git"}
