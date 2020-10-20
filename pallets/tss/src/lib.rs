@@ -118,7 +118,7 @@ decl_error! {
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		// Errors must be initialized if they are used by the pallet.
-		//type Error = Error<T>;
+	type Error = Error<T>;
 
 		// Events must be initialized if they are used by the pallet.
         fn deposit_event() = default;
