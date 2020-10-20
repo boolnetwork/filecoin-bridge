@@ -198,13 +198,11 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
         C: BlockBuilderProvider<B, Block, C> + HeaderBackend<Block> + ProvideRuntimeApi<Block> + BlockchainEvents<Block>
         + CallApiAt<Block> + Send + Sync + 'static,
         C::Api: VendorApi<Block>,
-//        Block::Hash: Into<sp_core::H256>
 {
     thread::spawn(move || {
         let height = 0u64;
 
         let mut recv_addr: Vec<u8> = Vec::new();
-        //TODO: 改成链上查询
         loop {
             thread::sleep(time::Duration::new(30, 0));
             let pubkey = state.tss_pubkey();
@@ -257,8 +255,8 @@ mod tests {
     fn test() {
         //cargo test --color=always --package fc-signer --lib tests::test -- --exact --nocapture
         let mut rt = Runtime::new().unwrap();
-        let http = Http::new("http://47.52.21.141:1234/rpc/v0");
-        let ret: TipSet = rt.block_on(http.chain_head()).unwrap();
+        let http = filecoin_http::Http::new("http://47.52.21.141:1234/rpc/v0");
+        let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
         let cids = ret.cids.clone();
         let ret = rt
             .block_on(http.chain_get_block_messages(&cids[0]))
@@ -268,7 +266,7 @@ mod tests {
             println!("cids = {:?}", cid);
             let bm: BlockMessages = rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
             println!("block_messages = {:?}", bm);
-            let signed_messages = bm.secpk_messages.clone();
+            let signed_messages = bm.messages.clone();
             for message in signed_messages {
                 //let (who,val) = extract_message(message.message);
             }
