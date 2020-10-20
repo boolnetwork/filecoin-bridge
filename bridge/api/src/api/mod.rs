@@ -2,7 +2,7 @@
 mod chain;
 //mod wallet;
 //mod sync;
-//mod mpool;
+mod mpool;
 //mod miner;
 //mod client;
 
@@ -10,7 +10,7 @@ mod chain;
 pub use chain::ChainApi;
 //pub use wallet::WalletApi;
 //pub use sync::SyncApi;
-//pub use mpool::MpoolApi;
+pub use mpool::MpoolApi;
 //pub use miner::MinerApi;
 //pub use client::ClientApi;
 
@@ -48,5 +48,5 @@ impl JsonApi for Http {
 impl ChainApi for Http {}
 //impl WalletApi for Http {}
 //impl SyncApi for Http {}
-//impl MpoolApi for Http {}
+impl MpoolApi for Http {}
 //impl MinerApi for Http {}

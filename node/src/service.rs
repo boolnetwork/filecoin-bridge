@@ -11,6 +11,10 @@ pub use sc_executor::NativeExecutor;
 use sp_consensus_aura::sr25519::{AuthorityPair as AuraPair};
 use sc_finality_grandpa::{FinalityProofProvider as GrandpaFinalityProofProvider, SharedVoterState};
 
+use bridge::{start_tss};
+use fc_adapter::{start_fc_service,};
+use futures::{channel::mpsc};
+
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
@@ -147,7 +151,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
 			client.clone(),
-			transaction_pool,
+			transaction_pool.clone(),
 			prometheus_registry.as_ref(),
 		);
 
@@ -179,6 +183,31 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	} else {
 		None
 	};
+
+	let (senderbool, reciverbool) = mpsc::unbounded::<(Vec<u8>)>();
+	let (senderfc, reciverfc) = mpsc::unbounded::<(Vec<u8>)>();
+
+	let is_rocket = false;
+	let tss = start_tss(
+		client.clone(),
+		transaction_pool.clone(),
+		0u64/*keystore.clone()*/,
+		is_rocket,
+		senderbool,
+		senderfc
+	);
+
+	task_manager.spawn_essential_handle().spawn_blocking("tss", tss);
+
+	let fc_service = start_fc_service(
+		client.clone(),
+		transaction_pool.clone(),
+		reciverbool,
+		//reciverfc
+	);
+
+	task_manager.spawn_essential_handle().spawn_blocking("fc_service", fc_service);
+
 
 	let grandpa_config = sc_finality_grandpa::Config {
 		// FIXME #1578 make this available through chainspec

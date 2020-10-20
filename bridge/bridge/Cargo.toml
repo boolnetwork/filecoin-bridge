@@ -57,4 +57,10 @@ hex-literal = "0.2.1"
 lotus-api = { version = "0.1.0", git = "https://github.com/Kayryu/lotus-api" }
 tokio = { version = "0.2.5", features = ["macros"] }
 lotus-api-forest ={ path = "../api" }
+forest_address = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_cid = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_message = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_vm = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_encoding = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_crypto = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 #subkey = { version = "2.0.0",git = "https://github.com/paritytech/substrate.git"}

@@ -41,6 +41,7 @@ forest_cid = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="m
 forest_bigint = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 interpreter = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_encoding = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 
 lotus-api-forest ={ path = "../api" }
 [dependencies.curv]

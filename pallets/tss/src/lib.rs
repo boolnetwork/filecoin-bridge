@@ -7,11 +7,12 @@
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch::DispatchResult, traits::Get};
 use frame_system::ensure_signed;
 use frame_support::dispatch::Vec;
-
+use codec::{Decode, Encode};
 use pallet_timestamp;
 use frame_system::ensure_root;
 
 use sp_std::{ prelude::*, marker::PhantomData};
+use frame_support::sp_runtime::RuntimeDebug;
 
 #[cfg(test)]
 mod mock;
@@ -30,6 +31,16 @@ pub enum TssKeyType {
 	Normal,
 }
 
+/// for withdraw event
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub struct WithdrawDetail<AccountId> {
+	pub uid: u64,
+	pub actor: AccountId,
+	/// token name
+	pub token: Vec<u8>,
+	pub value: u128,
+	pub receiver: Vec<u8>,
+}
 
 pub struct LinkedNodes<T: Trait>(PhantomData<T>);
 
@@ -66,6 +77,8 @@ decl_storage! {
         TssUrl get(fn tss_url): Vec<u8>;
 
         pub VerifiedAccount get(fn verified_account): Option<Data<T::AccountId>>;
+
+        FileCoinToken get(fn file_coin_token): map hasher(blake2_128_concat) T::AccountId => u128;
 	}
 }
 
@@ -86,6 +99,9 @@ decl_event!(
             GenerateTssKeyFc(Vec<u8>,Vec<u8>), // url store
 
             SignBtcMessage(u64, Time, Vec<u8>, Vec<u8>, Vec<u8>), // url btc_tx_message(hex) pubkey
+
+            //withdraw event
+            WithdrawToken(WithdrawDetail<AccountId>),
      	}
 );
 
@@ -204,22 +220,35 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn test_permis(origin) -> DispatchResult{
+        pub fn test_check_permissions(origin) -> DispatchResult{
             let sender = ensure_signed(origin)?;
             let result1 = Self::check_permissions(sender.clone());
-            #[cfg(feature = "std")]
-            println!("[test_permis] result = {:?} " ,result1);
 
             Self::add_new_member(sender.clone());
             let result2 = Self::check_permissions(sender);
 
-            #[cfg(feature = "std")]
-            println!("[test_permis] result = {:?} " ,result2);
             Ok(())
         }
-    }
 
-	}
+        #[weight = 0]
+        pub fn deposit_token(origin, who:T::AccountId, amount_add:u128) -> DispatchResult{
+            let sender = ensure_signed(origin)?;
+            let current_balance = <FileCoinToken<T>>::get(who.clone());
+            <FileCoinToken<T>>::insert(who,current_balance + amount_add);
+            Ok(())
+        }
+
+        #[weight = 0]
+        pub fn withdraw_token(origin, who:T::AccountId, amount_add:u128) -> DispatchResult{
+            let sender = ensure_signed(origin)?;
+            let current_balance = <FileCoinToken<T>>::get(who.clone());
+            <FileCoinToken<T>>::insert(who,current_balance - amount_add);
+            Ok(())
+        }
+
+
+    }
+}
 
 
 impl<T: Trait> Module<T> {

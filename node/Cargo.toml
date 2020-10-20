@@ -55,6 +55,7 @@ substrate-frame-rpc-system = '2.0.0'
 bridge = {version = "0.0.1",  path = "../bridge/bridge"}
 node-tss = {version = "0.0.1",  path = "../bridge/tss"}
 fc-adapter ={version = "0.1.0",  path = "../bridge/filecoin-adapter"}
+futures = { version = "0.3.1", features = ["compat"] }
 
 [features]
 default = []

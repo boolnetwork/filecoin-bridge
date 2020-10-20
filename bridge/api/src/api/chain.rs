@@ -48,7 +48,7 @@ pub trait ChainApi: JsonApi {
             .await
     }
 
-    async fn chain_get_block_messages(&self, cid: &forest_cid::Cid) -> Result<BlockMessages> {
+    async fn chain_get_block_messages(&self, cid: &forest_cid::Cid) -> Result<interpreter::BlockMessages> {
         self.request("ChainGetBlockMessages", vec![helper::serialize(&forest_cid::json::CidJson(cid.clone()))])
             .await
     }

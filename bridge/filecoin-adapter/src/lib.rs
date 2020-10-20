@@ -48,16 +48,21 @@ use sp_runtime::{
 use std::fs::remove_dir;
 use std::thread;
 
-use lotus_api::{
-    api::ChainApi, types::address::Address, types::message::BlockMessages, types::tipset::TipSet,
-    Http,
-};
+//use lotus_api::{
+//    api::ChainApi, types::address::Address, types::message::BlockMessages, types::tipset::TipSet,
+//    Http,
+//};
 use lotus_api::types::message::originAddress;
-use lotus_api::types::message::UnsignedMessage;
+//use lotus_api::types::message::UnsignedMessage;
 
-use lotus_api_forest::{ Http as filecoin_http ,  };
+use lotus_api_forest::{ Http as filecoin_http  };
 use lotus_api_forest;
-use lotus_api_forest::api::ChainApi as api2;
+use lotus_api_forest::api::ChainApi;
+use interpreter::{BlockMessages};
+use forest_blocks::{Tipset};
+use forest_message::{UnsignedMessage};
+use forest_address::Address;
+use forest_encoding::Cbor;
 
 use std::time;
 use tokio::runtime::Runtime;
@@ -151,6 +156,7 @@ where
             last_block: at,
         })),
     );
+
     let (a, b) = unbundchannel();
 
     let fc_sender = FCSender::new(tx_sender, b);
@@ -166,15 +172,15 @@ type MessageStreamR<V> = mpsc::UnboundedReceiver<(Vec<u8>, V)>;
 type MessageStreamS<V> = mpsc::UnboundedSender<(Vec<u8>, V)>;
 type CidBytes = Vec<u8>;
 
-fn extract_message(message: UnsignedMessage) -> (CidBytes, originAddress, Vec<u8>, u128) {
+fn extract_message(message: UnsignedMessage) -> (CidBytes, Address, Vec<u8>, u128) {
     let revice_address = message.to.clone();
 
     let from_address = message.from.clone();
-    let deposit_boolid = message.params.clone().into_inner();
+    let deposit_boolid = message.params.bytes().clone();
     let deposit_amount = message.value.clone().to_u128().unwrap();
 
-    let cid = message.cid().to_bytes();
-    (cid, revice_address, deposit_boolid, deposit_amount)
+    let cid = message.cid().unwrap().to_bytes();
+    (cid, revice_address, deposit_boolid.into(), deposit_amount)
 }
 
 pub fn unbundchannel() -> (MessageStreamS<Value>, MessageStreamR<Value>) {
@@ -189,6 +195,7 @@ pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: F
         let height = 0u64;
 
         let mut recv_addr: Vec<u8> = Vec::new();
+        //TODO: 改成链上查询
         loop {
             thread::sleep(time::Duration::new(30, 0));
             match reciver.try_next() {
@@ -204,28 +211,25 @@ pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: F
         loop {
             thread::sleep(time::Duration::new(7, 0));
             let mut rt = Runtime::new().unwrap();
-            let http = Http::new("http://47.52.21.141:1234/rpc/v0");
-            let ret: TipSet = rt.block_on(http.chain_head()).unwrap();
+            let http = filecoin_http::new("http://47.52.21.141:1234/rpc/v0");
+            let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
 
-            let http2 = filecoin_http::new("");
-            let ret2: forest_blocks::Tipset = rt.block_on(http2.chain_head()).unwrap();
-
-            let new_height = ret.height as u64;
+            let new_height = ret.epoch() as u64;
             if new_height == height {
                 continue;
             }
 
             let mut message_set = HashMap::<Vec<u8>, (Vec<u8>, u128)>::new();
-            let cids = ret.cids.clone();
+            let cids = ret.cids();
             for cid in cids {
                 println!("cids = {:?}", cid);
                 let block_messages: BlockMessages =
                     rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
                 println!("block_messages = {:?}", block_messages);
-                let signed_messages = block_messages.secpk_messages.clone();
+                let signed_messages = block_messages.messages.clone();
                 for message in signed_messages {
-                    let (cid, revice_addr, who, val) = extract_message(message.message);
-                    if revice_addr == originAddress::new_secp256k1_addr(&recv_addr).unwrap() {
+                    let (cid, revice_addr, who, val) = extract_message(message.message().clone());
+                    if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {
                         message_set.insert(cid, (who, val));
                     }
                 }

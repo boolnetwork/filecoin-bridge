@@ -8,7 +8,6 @@ use sp_runtime::{
 };
 
 use sp_api::{ProvideRuntimeApi, CallApiAt};
-//use sc_keystore::KeyStorePtr;
 use parking_lot::Mutex;
 use sp_core::Pair;
 use sp_core::sr25519::Pair as edPair;
@@ -36,10 +35,7 @@ use filecoin_bridge_runtime::{
 
 use frame_system::{Call as SystemCall, ensure_root};
 use pallet_tss::{Call as TssCall};
-//use pallet_btc_bridge::{Call as BtcBridgeCall};
-//use pallet_token::Call as TokenCall;
 
-//pub use node_primitives::{AccountId, Signature, Balance, Index};
 use filecoin_bridge_runtime::{
 	AccountId, Signature, Balance, Index
 };
@@ -58,8 +54,7 @@ use ::filecoin_bridge_runtime::Block ;
 use node_primitives::Hash;
 use frame_system::EventRecord;
 
-use pallet_tss::{RawEvent };
-//use pallet_token::{RawEvent as tokenEvent, WithdrawDetail};
+use pallet_tss::{RawEvent, WithdrawDetail };
 use tss_signer::{set_pubkey, sign_btc_hex_return_hex, r_s_to_vec, sign_by_tss};
 use std::thread;
 use sp_std::convert::TryFrom;
@@ -68,10 +63,15 @@ use hex_literal::*;
 use secp256k1::*;
 use futures::{prelude::*, channel::mpsc};
 
-//use plum_message::*;
-use lotus_api::*;
 use num_traits::cast::FromPrimitive;
 
+use lotus_api_forest::api::MpoolApi;
+use forest_message;
+use forest_cid;
+use forest_vm;
+use forest_encoding::Cbor;
+use forest_vm::Serialized;
+use forest_crypto;
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
 	FC,
@@ -538,22 +538,22 @@ impl <V,B>TssSender<V,B>
 		Some(vec![0u8])
 	}
 
-//	fn withdraw_fc(&self, withdrawdetail:&WithdrawDetail<AccountId>){
-//		let url = self.spv.tss_url();
-//		let pubkey = self.spv.tss_pubkey_fc();
-//		let (message,cid) = message_create(
-//			pubkey.clone(),
-//			withdrawdetail.receiver.clone(),
-//			withdrawdetail.value.clone(),
-//		);
-//		let sig = self.key_sign(url, cid.to_bytes(),
-//								pubkey.clone(),SignatureType::Others).unwrap();
-//		let signed_message = lotus_api::types::message::SignedMessage{
-//			message:message,
-//			signature:lotus_api::types::crypto::Signature::new_secp(sig),
-//		};
-//		let cid = send_fc_message(signed_message);
-//	}
+	fn withdraw_fc(&self, withdrawdetail:&WithdrawDetail<AccountId>){
+		let url = self.spv.tss_url();
+		let pubkey = self.spv.tss_pubkey_fc();
+		let (message,cid) = message_create(
+			pubkey.clone(),
+			withdrawdetail.receiver.clone(),
+			withdrawdetail.value.clone(),
+		);
+		let sig = self.key_sign(url, cid.to_bytes(),
+								pubkey.clone(),SignatureType::Others).unwrap();
+		let signed_message = forest_message::SignedMessage{
+			message:message,
+			signature:forest_crypto::Signature::new_secp256k1(sig),
+		};
+		let cid = send_fc_message(signed_message);
+	}
 
 	fn get_stream(&self, events_key:StorageKey) -> StorageEventStream<B::Hash> {
 		self.spv.get_notification_stream(Some(&[events_key]), None)
@@ -604,24 +604,19 @@ impl <V,B>TssSender<V,B>
 								RawEvent::SignBtcMessage(_index, _time, url, message, pubkey) => {
 									self.key_sign(url.to_vec(), message.to_vec(), pubkey.to_vec() ,SignatureType::Btc);
 								},
+								RawEvent::WithdrawToken(withdrawdetail) => {
+								    self.withdraw_fc(withdrawdetail);
+   							    },
 								_ => {}
 							}
 						}
-//						if let Event::pallet_token(e) = event {
-//							match e {
-//								tokenEvent::WithdrawToken(withdrawdetail) => {
-//									self.withdraw_fc(withdrawdetail);
-//								},
-//								_ => {},
-//							}
-//						}
 					}
 				});
 				futures::future::ready(())
 			});
 
 		println!("=========== return storage_stream ===========");
-		storage_stream//.select(on_exit).then(|_| Ok(()))
+		storage_stream
 	}
 }
 
@@ -684,33 +679,34 @@ use tokio::runtime::Runtime as tokioRuntime;
 use lotus_api::api::*;
 use lotus_api::types::message::AddressConver;
 
-pub fn get_nonce(addr: lotus_api::types::address::Address) -> u64 {
+pub fn get_nonce(addr: forest_address::Address) -> u64 {
 	let mut rt = tokioRuntime::new().unwrap();
-	let http = Http::new("http://47.52.21.141:1234/rpc/v0");
+	let http = lotus_api_forest::Http::new("http://47.52.21.141:1234/rpc/v0");
 	let ret:u64 = rt.block_on(http.mpool_get_nonce(&addr)).unwrap();
 	ret
 }
 
-pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (lotus_api::types::message::UnsignedMessage ,lotus_api::types::Cid){
-	let from_addr = lotus_api::types::message::originAddress::new_secp256k1_addr(&from).unwrap();
-	let nonce = get_nonce(from_addr.clone().to_api_address());
-	let unsignedtx = lotus_api::types::message::UnsignedMessage {
+pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::UnsignedMessage ,forest_cid::Cid){
+	let from_addr = forest_address::Address::new_secp256k1(&from).unwrap();
+	let nonce = get_nonce(from_addr.clone());
+	let unsignedtx = forest_message::UnsignedMessage {
 		version: 0,
-		to: lotus_api::types::message::originAddress::new_from_bytes(&to).unwrap(),
+		to: forest_address::Address::new_bls(&to).unwrap(),
 		from: from_addr,
-		nonce: nonce,
-		value: lotus_api::types::message::BigInt::from_u128(val).unwrap(),
-		gas_limit: 10000u64,
-		gas_price: lotus_api::types::message::BigInt::from_u128(100000u128).unwrap(),
-		method: 0u64,
-		params: lotus_api::types::bytes::Bytes::from(vec![0u8] ),
+    	sequence: nonce,
+		value: forest_vm::TokenAmount::from_u128(val).unwrap(),
+		method_num: 0u64,
+		params: Serialized::new(vec![0u8]),
+		gas_limit: 100000i64,
+		gas_fee_cap:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
+	    gas_premium:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
 	};
-	(unsignedtx.clone(),unsignedtx.cid())
+	(unsignedtx.clone(),unsignedtx.cid().unwrap())
 }
 
-fn send_fc_message(message:lotus_api::types::message::SignedMessage) -> lotus_api::types::Cid {
+fn send_fc_message(message: forest_message::SignedMessage) -> forest_cid::Cid {
 	let mut rt = tokioRuntime::new().unwrap();
-	let http = Http::new("http://47.52.21.141:1234/rpc/v0");
+	let http = lotus_api_forest::Http::new("http://47.52.21.141:1234/rpc/v0");
 	let ret = rt.block_on(http.mpool_push(&message)).unwrap();
 	ret
 }
