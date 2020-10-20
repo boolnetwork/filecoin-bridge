@@ -28,7 +28,7 @@ use num_traits::cast::ToPrimitive;
 use futures::executor::block_on;
 use futures::{channel::mpsc, prelude::*};
 
-use bridge::{PacketNonce, SuperviseClient, TokenType, TxMessage, TxSender, TxType};
+use bridge::{PacketNonce, SuperviseClient, TokenType, TxMessage, TxSender, TxType, ChainState};
 use sp_transaction_pool::{TransactionFor, TransactionPool};
 use std::marker::PhantomData;
 
@@ -80,20 +80,20 @@ lazy_static! {
 }
 
 #[derive(Debug)]
-pub struct FCSender<V, B> {
-    pub spv: V,
+pub struct FCMessageForward<V, B> {
+    pub spv: Arc<V>,
     pub reciver: MessageStreamR<Value>,
     pub a: std::marker::PhantomData<B>,
 }
 
-impl<V, B> FCSender<V, B>
+impl<V, B> FCMessageForward<V, B>
 where
     V: SuperviseClient<B> + Send + Sync + 'static,
     B: BlockT,
 {
     pub fn new(spv: V, rec: mpsc::UnboundedReceiver<(Vec<u8>, Value)>) -> Self {
-        FCSender {
-            spv: spv,
+        FCMessageForward {
+            spv: Arc::new(spv),
             reciver: rec,
             a: PhantomData,
         }
@@ -103,7 +103,7 @@ where
         self.spv.submit_fc_transfer_tss(data);
     }
 
-    fn sign_tss_message_start(self) -> impl Future<Output = ()> + 'static {
+    fn start_sign_push_fc_message(self) -> impl Future<Output = ()> + 'static {
         let spv = self.spv;
         let stream = {
             self.reciver.for_each(move |(who, value)| {
@@ -148,7 +148,7 @@ where
     let at = BlockId::Hash(info.best_hash);
 
     let tx_sender = TxSender::new(
-        client,
+        client.clone(),
         pool,
         key,
         Arc::new(Mutex::new(PacketNonce {
@@ -157,14 +157,17 @@ where
         })),
     );
 
-    let (a, b) = unbundchannel();
+    let (fc_parse_sender,
+        fc_parse_recvier) = unbundchannel();
 
-    let fc_sender = FCSender::new(tx_sender, b);
+    let fc_message_forward =
+        FCMessageForward::new(tx_sender, fc_parse_recvier);
 
+    let state = ChainState::new(client);
     // loop to fetch Message from FileCoin & send to fc_sender
-    main_loop(a, reciver);
+    fc_message_fetch_parse(fc_parse_sender, reciver,state);
     // main thread to revice & parse FileCoin Message and submit to filecoin
-    fc_sender.sign_tss_message_start()
+    fc_message_forward.start_sign_push_fc_message()
 }
 
 type Value = u128;
@@ -188,9 +191,15 @@ pub fn unbundchannel() -> (MessageStreamS<Value>, MessageStreamR<Value>) {
     (sender, reciver)
 }
 
-//const Address = Address::new_secp256k1_addr();
-
-pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: FcPubkeySender) {
+pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: FcPubkeySender, state: ChainState<Block,B,C>)
+    where
+        Block: BlockT,
+        B: backend::Backend<Block> + Send + Sync + 'static,
+        C: BlockBuilderProvider<B, Block, C> + HeaderBackend<Block> + ProvideRuntimeApi<Block> + BlockchainEvents<Block>
+        + CallApiAt<Block> + Send + Sync + 'static,
+        C::Api: VendorApi<Block>,
+//        Block::Hash: Into<sp_core::H256>
+{
     thread::spawn(move || {
         let height = 0u64;
 
@@ -198,13 +207,12 @@ pub fn main_loop(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: F
         //TODO: 改成链上查询
         loop {
             thread::sleep(time::Duration::new(30, 0));
-            match reciver.try_next() {
-                Ok(Some(x)) => {
-                    recv_addr = x;
-                    break;
-                }
-                Ok(None) => {}
-                Err(x) => {}
+            let pubkey = state.tss_pubkey();
+            if pubkey.len() == 0{
+                continue;
+            }else{
+                recv_addr = pubkey;
+                break;
             }
         }
         println!("get recvice address {:?}", recv_addr);
