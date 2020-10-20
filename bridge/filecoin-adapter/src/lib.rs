@@ -163,9 +163,8 @@ where
     let fc_message_forward =
         FCMessageForward::new(tx_sender, fc_parse_recvier);
 
-    let state = ChainState::new(client);
     // loop to fetch Message from FileCoin & send to fc_sender
-    fc_message_fetch_parse(fc_parse_sender, reciver,state);
+    fc_message_fetch_parse(fc_parse_sender, reciver,ChainState::new(client));
     // main thread to revice & parse FileCoin Message and submit to filecoin
     fc_message_forward.start_sign_push_fc_message()
 }
@@ -176,13 +175,13 @@ type MessageStreamS<V> = mpsc::UnboundedSender<(Vec<u8>, V)>;
 type CidBytes = Vec<u8>;
 
 fn extract_message(message: UnsignedMessage) -> (CidBytes, Address, Vec<u8>, u128) {
-    let revice_address = message.to.clone();
 
+    let revice_address = message.to.clone();
     let from_address = message.from.clone();
     let deposit_boolid = message.params.bytes().clone();
     let deposit_amount = message.value.clone().to_u128().unwrap();
-
     let cid = message.cid().unwrap().to_bytes();
+
     (cid, revice_address, deposit_boolid.into(), deposit_amount)
 }
 

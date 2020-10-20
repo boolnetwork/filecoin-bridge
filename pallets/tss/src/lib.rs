@@ -100,7 +100,9 @@ decl_event!(
 
             SignBtcMessage(u64, Time, Vec<u8>, Vec<u8>, Vec<u8>), // url btc_tx_message(hex) pubkey
 
-            //withdraw event
+            // deposit event
+            DepositToken(AccountId,u64,Vec<u8>),
+            // withdraw event
             WithdrawToken(WithdrawDetail<AccountId>),
      	}
 );

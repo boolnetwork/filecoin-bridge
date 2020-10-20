@@ -197,7 +197,6 @@ pub struct TxSender<A,Block,B,C>
 		A: TransactionPool<Block = Block> + 'static,
 		Block: BlockT,
 		B: backend::Backend<Block> + Send + Sync + 'static,
-		//C: BlockchainEvents<Block> + HeaderBackend<Block> + ProvideRuntimeApi<Block>,
 		C: BlockBuilderProvider<B, Block, C> + HeaderBackend<Block> + ProvideRuntimeApi<Block> + BlockchainEvents<Block>
 		+ CallApiAt<Block> + Send + Sync + 'static,
 		C::Api: VendorApi<Block>,
@@ -424,16 +423,14 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 					(),
 				),
 			);
-//			let key = ecdsa::Pair::from_string(&format!("//{}", "Eve"), None)
-//				.expect("static values are valid; qed");
+//			let key = ecdsa::Pair::from_string(&format!("//{}", "Eve"), None).expect("static values are valid; qed");
+
 			let signature:Signature = raw_payload.using_encoded(|payload|
 				{
-					//self.ed_key.sign(payload);  //原本代码
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
 					let sig = sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey).unwrap();
 					ecdsa::Signature::from_slice(&sig).into()
-					//key.sign(payload)
 				});
 			let (function, extra, _) = raw_payload.deconstruct();
 
