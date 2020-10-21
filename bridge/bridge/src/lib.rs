@@ -1,77 +1,35 @@
 
-use std::{sync::Arc, u64};
-
-use sp_runtime::{
-	generic::{BlockId ,Era},
-	traits::{Block as BlockT, Zero},
-	traits::IdentifyAccount
-};
-
-use sp_api::{ProvideRuntimeApi, CallApiAt};
+use std::{sync::Arc, u64, marker::PhantomData, thread};
+use futures::{prelude::*, executor::block_on, channel::mpsc};
 use parking_lot::Mutex;
-use sp_core::Pair;
-use sp_core::sr25519::Pair as edPair;
-use sp_core::sr25519;
-use sp_core::ecdsa;
-use sp_core::ecdsa::Pair as ecdsaPair;
-use sp_core::ecdsa::Public as ecdsaPublic;
-use sc_client_api::{BlockchainEvents};
-
-use futures::prelude::*;
-use futures::executor::block_on;
-
 use log::{debug, info};
-
-use sp_blockchain::{HeaderBackend};
-
 use codec::{Encode, Decode};
 
+use sp_runtime::{generic::{BlockId ,Era}, traits::{Block as BlockT, Zero}};
+use sp_api::{ProvideRuntimeApi, CallApiAt};
+use sp_core::{Pair, storage::{StorageKey, StorageData}, sr25519::Pair as edPair, sr25519, ecdsa, twox_128};
+use sc_client_api::{BlockchainEvents, backend, notifications::StorageEventStream};
+use sp_blockchain::{HeaderBackend};
 use sp_transaction_pool::{TransactionPool, TransactionFor};
-
-//use node_runtime as filecoin_bridge_runtime;
-use filecoin_bridge_runtime::{
-	UncheckedExtrinsic, apis::VendorApi ,Call, SignedExtra, SignedPayload
-};
-
-use frame_system::{Call as SystemCall, ensure_root};
-use pallet_tss::{Call as TssCall};
-
-use filecoin_bridge_runtime::{
-	AccountId, Signature, Balance, Index
-};
-
-use sp_core::storage::{StorageKey, StorageData};
-use sc_client_api::notifications::{StorageEventStream};
-
-use sp_core::twox_128;
-use node_tss::{ start_sm_manager, key_gen, sign};
-use std::marker::PhantomData;
-use sc_client_api::backend;
 use sc_block_builder::{BlockBuilderProvider};
-//use sc_keystore::KeyStorePtr;
-use ::filecoin_bridge_runtime::{ Event, VERSION, Runtime } ;
-use ::filecoin_bridge_runtime::Block ;
 use node_primitives::Hash;
-use frame_system::EventRecord;
-
-use pallet_tss::{RawEvent, WithdrawDetail };
-use tss_signer::{set_pubkey, sign_btc_hex_return_hex, r_s_to_vec, sign_by_tss};
-use std::thread;
-use sp_std::convert::TryFrom;
-
-use hex_literal::*;
-use secp256k1::*;
-use futures::{prelude::*, channel::mpsc};
-
 use num_traits::cast::FromPrimitive;
+use frame_system::{Call as SystemCall, EventRecord};
+use pallet_tss::{Call as TssCall, RawEvent, WithdrawDetail };
+
+use filecoin_bridge_runtime::{UncheckedExtrinsic, apis::VendorApi ,Call, SignedPayload
+							  , Event, VERSION, Runtime, AccountId, Signature, Balance, Index};
+
+use tss_signer::{set_pubkey, sign_btc_hex_return_hex, sign_by_tss};
+use node_tss::{start_sm_manager, key_gen};
 
 use lotus_api_forest::api::MpoolApi;
 use forest_message;
 use forest_cid;
-use forest_vm;
+use forest_vm::{self, Serialized};
 use forest_encoding::Cbor;
-use forest_vm::Serialized;
 use forest_crypto;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
 	FC,
@@ -470,7 +428,7 @@ pub enum TssRole{
 
 pub enum SignatureType{
 	Btc,
-	Others,
+	General,
 }
 
 #[derive(Debug, Clone)]
@@ -548,7 +506,7 @@ impl <V,B>TssSender<V,B>
 		//let pubkey = self.spv.tss_pubkey();
 		debug!(target:"keysign", "pubkey {:?}", pubkey);
 		match sigtype {
-			SignatureType::Others => {
+			SignatureType::General => {
 				let str_message = core::str::from_utf8(&message).unwrap();
 				let signature = sign_by_tss(message, str_url,pubkey).unwrap();
 				return Some(signature)
@@ -577,7 +535,7 @@ impl <V,B>TssSender<V,B>
 			withdrawdetail.value.clone(),
 		);
 		let sig = self.key_sign(url, cid.to_bytes(),
-								pubkey.clone(),SignatureType::Others).unwrap();
+								pubkey.clone(),SignatureType::General).unwrap();
 		let signed_message = forest_message::SignedMessage{
 			message:message,
 			signature:forest_crypto::Signature::new_secp256k1(sig),
@@ -628,7 +586,7 @@ impl <V,B>TssSender<V,B>
 									self.key_gen_fc(url.to_vec(), store.to_vec());
 								},
 								RawEvent::SignMessage(_index, _id, _time, url, message, pubkey) => {
-									self.key_sign(url.to_vec(), message.to_vec(), pubkey.to_vec() ,SignatureType::Others);
+									self.key_sign(url.to_vec(), message.to_vec(), pubkey.to_vec() ,SignatureType::General);
 								},
 								RawEvent::SignBtcMessage(_index, _time, url, message, pubkey) => {
 									self.key_sign(url.to_vec(), message.to_vec(), pubkey.to_vec() ,SignatureType::Btc);

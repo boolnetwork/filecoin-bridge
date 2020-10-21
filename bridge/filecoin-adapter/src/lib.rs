@@ -1,79 +1,30 @@
 #![allow(dead_code)]
-use serialization::bytes::Bytes;
-use serialization::{Serializable, Stream};
 
-use libsecp256k1::PublicKey;
 #[macro_use]
 extern crate lazy_static;
-use node_tss::sign_vec;
-use rustc_hex::FromHex;
-use rustc_hex::ToHex;
-use serialization::deserialize;
-use std::collections::HashMap;
-
-use libsecp256k1::Signature as secpSignature;
-use secp256k1::key::SecretKey;
 
 use parking_lot::Mutex;
-use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
-
-use curv::elliptic::curves::traits::ECScalar;
-use curv::FE;
-
-use log::{debug, info};
-use num_traits::cast::ToPrimitive;
-
-use futures::executor::block_on;
+use std::{sync::Arc, thread, time, marker::PhantomData, collections::HashMap};
 use futures::{channel::mpsc, prelude::*};
+use tokio::runtime::Runtime;
 
+use num_traits::cast::ToPrimitive;
 use bridge::{PacketNonce, SuperviseClient, TokenType, TxMessage, TxSender, TxType, ChainState};
-use sp_transaction_pool::{TransactionFor, TransactionPool};
-use std::marker::PhantomData;
-
+use sp_transaction_pool::{TransactionPool};
 use filecoin_bridge_runtime::apis::VendorApi;
 use sc_block_builder::BlockBuilderProvider;
-use sc_client_api::backend;
-use sc_client_api::BlockchainEvents;
+use sc_client_api::{backend, BlockchainEvents};
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
-use sp_core::sr25519;
-use sp_core::sr25519::Pair as edPair;
-use sp_core::Pair;
-use sp_runtime::{
-    generic::{BlockId, Era},
-    traits::{Block as BlockT, Zero},
-};
-use std::fs::remove_dir;
-use std::thread;
+use sp_core::{sr25519, Pair};
+use sp_runtime::{generic::{BlockId}, traits::{Block as BlockT}};
 
-//use lotus_api::{
-//    api::ChainApi, types::address::Address, types::message::BlockMessages, types::tipset::TipSet,
-//    Http,
-//};
-use lotus_api::types::message::originAddress;
-//use lotus_api::types::message::UnsignedMessage;
-
-use lotus_api_forest::{ Http as filecoin_http  };
-use lotus_api_forest;
-use lotus_api_forest::api::ChainApi;
-use interpreter::{BlockMessages};
-use forest_blocks::{Tipset};
-use forest_message::{UnsignedMessage};
-use forest_address::Address;
+use lotus_api_forest::{self, Http as filecoin_http, api::ChainApi};
+use interpreter::{self, BlockMessages};
+use forest_blocks::{self, Tipset};
+use forest_message::{self, UnsignedMessage};
+use forest_address::{self, Address};
 use forest_encoding::Cbor;
-
-use std::time;
-use tokio::runtime::Runtime;
-use std::collections::HashSet;
-
-use forest_address;
-use forest_bigint;
-use forest_cid;
-use forest_message;
-use interpreter;
-use forest_blocks;
 
 lazy_static! {
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> = Mutex::new(vec!["test"]);
