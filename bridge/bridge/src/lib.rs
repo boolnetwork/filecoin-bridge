@@ -521,12 +521,11 @@ impl <V,B>TssSender<V,B>
 
 	fn key_gen_bool(&self,url:Vec<u8>,_store:Vec<u8>){
 		let str_url = core::str::from_utf8(&url).unwrap();
-		let store2 = "boolbtc.store";
+		let store2 = "bool.store";
 		match key_gen(str_url,store2){
 			Ok((pk,pk_vec)) => {
 				let data = TxMessage::new(TxType::TssKeyGenBool(pk.to_vec(),pk_vec));
 				self.submit_tx(data);
-				//self.senderbool.unbounded_send(pk.to_vec());
 			},
 			_ => return ,
 		}
@@ -534,12 +533,11 @@ impl <V,B>TssSender<V,B>
 
 	fn key_gen_fc(&self,url:Vec<u8>,_store:Vec<u8>){
 		let str_url = core::str::from_utf8(&url).unwrap();
-		let store2 = "boolbtc.store";
+		let store2 = "filecoin.store";
 		match key_gen(str_url,store2){
 			Ok((pk,pk_vec)) => {
 				let data = TxMessage::new(TxType::TssKeyGenFc(pk.to_vec(),pk_vec));
 				self.submit_tx(data);
-				//self.senderfc.unbounded_send(pk.to_vec());
 			},
 			_ => return ,
 		}
@@ -593,10 +591,9 @@ impl <V,B>TssSender<V,B>
 
 	pub fn start(self,
 				 _role: TssRole,
-				 rocket: bool,
-				 /*on_exit: impl Future<Output=()>,*/ ) -> impl Future<Output=()> + 'static {
-		let events_key = StorageKey(b"System Events".as_prefix_key());
+				 enable_tss_message_intermediary: bool ) -> impl Future<Output=()> + 'static {
 
+		let events_key = StorageKey(b"System Events".as_prefix_key());
 		let storage_stream: StorageEventStream<B::Hash> = self.get_stream(events_key);
 
 		let storage_stream = storage_stream
@@ -614,7 +611,7 @@ impl <V,B>TssSender<V,B>
 				let events: Vec<Event> = records.concat().iter().cloned().map(|r| r.event).collect();
 				events.iter().for_each(|event| {
 					debug!(target:"keysign", "Event {:?}", event);
-					if rocket {
+					if enable_tss_message_intermediary {
 						if let Event::pallet_tss(e) = event {
 							match e {
 								RawEvent::GenKey(_index, _id, _time, url) => {
@@ -662,7 +659,7 @@ pub fn start_tss<A, B, C, Block>(
 	client: Arc<C>,
 	pool: Arc<A>,
 	_keystore: u64/*KeyStorePtr*/,
-	rocket:bool,
+	enable_tss_message_intermediary:bool,
 	senderbool: FcPubkeySender,
 	senderfc: FcPubkeySender,
 ) -> impl Future<Output = ()> + 'static
@@ -683,9 +680,7 @@ pub fn start_tss<A, B, C, Block>(
 	//let key_seed = sr25519::Pair::from_seed_slice(&[0x25,0xb4,0xfd,0x88,0x81,0x3f,0x5e,0x16,0xd4,0xbe,0xa6,0x28
 	//	,0x39,0x02,0x89,0x57,0xf9,0xe3,0x40,0x10,0x8e,0x4e,0x93,0x73,0xd0,0x8b,0x31,0xb0,0xf6,0xe3,0x04,0x40]).unwrap();
 
-	let info = client.info();
-	let at = BlockId::Hash(info.best_hash);
-
+	let at = BlockId::Hash(client.info().best_hash);
 	let tx_sender = TxSender::new(
 		client,
 		pool,
@@ -699,17 +694,15 @@ pub fn start_tss<A, B, C, Block>(
 		senderfc
 	);
 
-	if rocket{
+	if enable_tss_message_intermediary{
 		thread::spawn(move || {
 			start_sm_manager();
 		});
 	}
-	tss_sender.start(TssRole::Party ,!rocket /*, on_exit*/)
+	tss_sender.start(TssRole::Party ,!enable_tss_message_intermediary /*, on_exit*/)
 }
 
 use tokio::runtime::Runtime as tokioRuntime;
-use lotus_api::api::*;
-use lotus_api::types::message::AddressConver;
 
 pub fn get_nonce(addr: forest_address::Address) -> u64 {
 	let mut rt = tokioRuntime::new().unwrap();
