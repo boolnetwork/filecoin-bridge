@@ -233,10 +233,16 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn deposit_token(origin, who:T::AccountId, amount_add:u128) -> DispatchResult{
+        pub fn deposit_token(origin, who:Vec<u8>, amount_add:u128) -> DispatchResult{
             let sender = ensure_signed(origin)?;
-            let current_balance = <FileCoinToken<T>>::get(who.clone());
-            <FileCoinToken<T>>::insert(who,current_balance + amount_add);
+
+            let dest: T::AccountId = match Decode::decode(&mut who.as_slice()) {
+                Ok(a) => a,
+                Err(_e) => return Ok(()),
+            };
+
+            let current_balance = <FileCoinToken<T>>::get(dest.clone());
+            <FileCoinToken<T>>::insert(dest,current_balance + amount_add);
             Ok(())
         }
 

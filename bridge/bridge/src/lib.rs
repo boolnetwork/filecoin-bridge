@@ -389,9 +389,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let nonce = self.get_nonce();
 
 			let function = match relay_message.tx_type {
-				TxType::System => Call::System(SystemCall::remark(vec![1u8])),
-	//TODO:			//TxType::BoolDeposit(who,tokentype,amount) =>
-				//	Call::Token(TokenCall::deposit_token_general(who,tokentype.to_vec(),amount,vec![0u8],vec![0u8])),
+				TxType::FCDeposit(who,tokentype,value) => Call::Tss(TssCall::deposit_token(who,value)),
 				_ => Call::System(SystemCall::remark(vec![1u8])),
 			};
 
@@ -404,7 +402,6 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 					frame_system::CheckNonce::<Runtime>::from(i),
 					frame_system::CheckWeight::<Runtime>::new(),
 					pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(f),
-					//Default::default(),
 				)
 			};
 			let version = self.client.runtime_version_at(&at).unwrap().spec_version;
