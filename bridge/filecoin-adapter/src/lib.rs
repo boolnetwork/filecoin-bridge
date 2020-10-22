@@ -128,7 +128,7 @@ type CidBytes = Vec<u8>;
 fn extract_message(message: UnsignedMessage) -> (CidBytes, Address, Vec<u8>, u128) {
 
     let revice_address = message.to.clone();
-    let from_address = message.from.clone();
+    let _from_address = message.from.clone();
     let deposit_boolid = message.params.bytes().clone();
     let deposit_amount = message.value.clone().to_u128().unwrap();
     let cid = message.cid().unwrap().to_bytes();
@@ -141,7 +141,7 @@ pub fn unbundchannel() -> (MessageStreamS<Value>, MessageStreamR<Value>) {
     (sender, reciver)
 }
 
-pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, mut reciver: FcPubkeySender, state: ChainState<Block,B,C>)
+pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>, Value)>, _reciver: FcPubkeySender, state: ChainState<Block,B,C>)
     where
         Block: BlockT,
         B: backend::Backend<Block> + Send + Sync + 'static,
@@ -167,7 +167,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
         loop {
             thread::sleep(time::Duration::new(7, 0));
             let mut rt = Runtime::new().unwrap();
-            let http = filecoin_http::new("http://47.52.21.141:1234/rpc/v0");
+            let http = filecoin_http::new("http://127.0.0.1:1234/rpc/v0");
             let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
 
             let new_height = ret.epoch() as u64;
@@ -190,7 +190,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
                     }
                 }
             }
-            for (cid, (who, val)) in message_set {
+            for (_cid, (who, val)) in message_set {
                 sender.unbounded_send((who, val));
             }
         }
@@ -205,7 +205,7 @@ mod tests {
     fn test() {
         //cargo test --color=always --package fc-signer --lib tests::test -- --exact --nocapture
         let mut rt = Runtime::new().unwrap();
-        let http = filecoin_http::Http::new("http://47.52.21.141:1234/rpc/v0");
+        let http = filecoin_http::Http::new("http://127.0.0.1:1234/rpc/v0");
         let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
         let cids = ret.cids.clone();
         let ret = rt

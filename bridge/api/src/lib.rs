@@ -20,7 +20,7 @@ mod tests {
     #[test]
     fn test() {
         let mut rt = Runtime::new().unwrap();
-        let http = Http::new("http://47.52.21.141:1234/rpc/v0");
+        let http = Http::new("http://127.0.0.1:1234/rpc/v0");
         let ret:TipSet = rt.block_on(http.chain_head()).unwrap();
 
         println!("height {:?}",ret.height);

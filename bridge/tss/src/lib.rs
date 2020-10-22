@@ -1,6 +1,5 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-
-use std::collections::HashMap;
+#[warn(unused_assignments)]
 use std::sync::RwLock;
 
 use rocket::{post, routes, State, Config, config::Environment};
@@ -142,7 +141,7 @@ pub fn start_sm_manager() {
     let db:LruCache<Key,u64> = LruCache::new(2500);
     let db_mtx = RwLock::new(db);
 
-    let mut db2:LruCache<Key,String> = LruCache::new(4500);
+    let db2:LruCache<Key,String> = LruCache::new(4500);
     let db2_mtx = RwLock::new(db2);
 
     {

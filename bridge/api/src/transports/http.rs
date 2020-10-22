@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn basic_test() {
         let mut rt = Runtime::new().unwrap();
-        let http = Http::new("http://47.52.21.141:1234/rpc/v0");
+        let http = Http::new("http://127.0.0.1:1234/rpc/v0");
         // Filecoin.Version need read permission
         let version: Value = rt.block_on(http.send("Filecoin.Version", Params::Array(vec![]))).unwrap();
 

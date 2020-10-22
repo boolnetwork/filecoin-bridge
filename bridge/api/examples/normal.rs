@@ -22,7 +22,7 @@ async fn main() -> Result<(), reqwest::Error> {
     };
 
     let res = reqwest::Client::new()
-        .post("http://47.52.21.141:1234/rpc/v0")
+        .post("http://127.0.0.1:1234/rpc/v0")
         .json(&new_post)
         .send()
         .await?;

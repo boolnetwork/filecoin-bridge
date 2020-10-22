@@ -1,4 +1,4 @@
-
+#[warn(dead_code)]
 use std::{sync::Arc, u64, marker::PhantomData, thread};
 use futures::{prelude::*, executor::block_on, channel::mpsc};
 use parking_lot::Mutex;
@@ -304,7 +304,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 					//Default::default(),
 				)
 			};
-			let version = self.client.runtime_version_at(&at).unwrap().spec_version;
+			let _version = self.client.runtime_version_at(&at).unwrap().spec_version;
 			let genesis_hash = self.client.hash(Zero::zero())
 				.expect("Genesis block always exists; qed").unwrap().into();
 			let raw_payload = SignedPayload::from_raw(
@@ -347,7 +347,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let nonce = self.get_nonce();
 
 			let function = match relay_message.tx_type {
-				TxType::FCDeposit(who,tokentype,value) => Call::Tss(TssCall::deposit_token(who,value)),
+				TxType::FCDeposit(who,_tokentype,value) => Call::Tss(TssCall::deposit_token(who,value)),
 				_ => Call::System(SystemCall::remark(vec![1u8])),
 			};
 
@@ -362,7 +362,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 					pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(f),
 				)
 			};
-			let version = self.client.runtime_version_at(&at).unwrap().spec_version;
+			let _version = self.client.runtime_version_at(&at).unwrap().spec_version;
 			let genesis_hash = self.client.hash(Zero::zero())
 				.expect("Genesis block always exists; qed").unwrap().into();
 			let raw_payload = SignedPayload::from_raw(
@@ -507,7 +507,7 @@ impl <V,B>TssSender<V,B>
 		debug!(target:"keysign", "pubkey {:?}", pubkey);
 		match sigtype {
 			SignatureType::General => {
-				let str_message = core::str::from_utf8(&message).unwrap();
+				let _str_message = core::str::from_utf8(&message).unwrap();
 				let signature = sign_by_tss(message, str_url,pubkey).unwrap();
 				return Some(signature)
 			},
@@ -540,7 +540,7 @@ impl <V,B>TssSender<V,B>
 			message:message,
 			signature:forest_crypto::Signature::new_secp256k1(sig),
 		};
-		let cid = send_fc_message(signed_message);
+		let _cid = send_fc_message(signed_message);
 	}
 
 	fn get_stream(&self, events_key:StorageKey) -> StorageEventStream<B::Hash> {
@@ -607,9 +607,6 @@ impl <V,B>TssSender<V,B>
 	}
 }
 
-struct FcTest<V>{
-	pub spv: V,
-}
 
 type FcPubkeySender = mpsc::UnboundedSender<Vec<u8>>;
 
@@ -664,7 +661,7 @@ use tokio::runtime::Runtime as tokioRuntime;
 
 pub fn get_nonce(addr: forest_address::Address) -> u64 {
 	let mut rt = tokioRuntime::new().unwrap();
-	let http = lotus_api_forest::Http::new("http://47.52.21.141:1234/rpc/v0");
+	let http = lotus_api_forest::Http::new("http://127.0.0.1:1234/rpc/v0");
 	let ret:u64 = rt.block_on(http.mpool_get_nonce(&addr)).unwrap();
 	ret
 }
@@ -689,7 +686,7 @@ pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::Uns
 
 fn send_fc_message(message: forest_message::SignedMessage) -> forest_cid::Cid {
 	let mut rt = tokioRuntime::new().unwrap();
-	let http = lotus_api_forest::Http::new("http://47.52.21.141:1234/rpc/v0");
+	let http = lotus_api_forest::Http::new("http://127.0.0.1:1234/rpc/v0");
 	let ret = rt.block_on(http.mpool_push(&message)).unwrap();
 	ret
 }
