@@ -21,10 +21,11 @@ use sp_runtime::{generic::{BlockId}, traits::{Block as BlockT}};
 
 use lotus_api_forest::{self, Http as filecoin_http, api::ChainApi};
 use interpreter::{self, BlockMessages};
-use forest_blocks::{self, Tipset};
+use forest_blocks::{self, Tipset, tipset::tipset_json::TipsetJson};
 use forest_message::{self, UnsignedMessage};
 use forest_address::{self, Address};
 use forest_encoding::Cbor;
+use rpc::BlockMessages as forest_BlockMessages;
 
 lazy_static! {
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> = Mutex::new(vec!["test"]);
@@ -168,7 +169,8 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
             thread::sleep(time::Duration::new(7, 0));
             let mut rt = Runtime::new().unwrap();
             let http = filecoin_http::new("http://127.0.0.1:1234/rpc/v0");
-            let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
+            let ret_json: TipsetJson = rt.block_on(http.chain_head()).unwrap();
+            let ret: Tipset = ret_json.into();
 
             let new_height = ret.epoch() as u64;
             if new_height == height {
@@ -179,10 +181,10 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
             let cids = ret.cids();
             for cid in cids {
                 println!("cids = {:?}", cid);
-                let block_messages: BlockMessages =
+                let block_messages: forest_BlockMessages =
                     rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
-                println!("block_messages = {:?}", block_messages);
-                let signed_messages = block_messages.messages.clone();
+               // let block_messages: BlockMessages = block_messages_rpc.into();
+                let signed_messages = block_messages.secp_msg.clone();
                 for message in signed_messages {
                     let (cid, revice_addr, who, val) = extract_message(message.message().clone());
                     if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {
@@ -200,26 +202,28 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use rpc::BlockMessages as forest_BlockMessages;
+    use lotus_api_forest::api::MpoolApi;
     #[test]
     fn test() {
         //cargo test --color=always --package fc-signer --lib tests::test -- --exact --nocapture
         let mut rt = Runtime::new().unwrap();
-        let http = filecoin_http::Http::new("http://127.0.0.1:1234/rpc/v0");
-        let ret: Tipset = rt.block_on(http.chain_head()).unwrap();
-        let cids = ret.cids.clone();
-        let ret = rt
-            .block_on(http.chain_get_block_messages(&cids[0]))
-            .unwrap();
+        let http = lotus_api_forest::Http::new("http://127.0.0.1:1234/rpc/v0");
+        let ret2: forest_blocks::tipset::tipset_json::TipsetJson = rt.block_on(http.chain_head()).unwrap();
+        let ret: Tipset = ret2.into();
+        let cids = ret.cids().clone();
+        println!("cids = {:?}", cids);
+        let block_messages: forest_BlockMessages =
+            rt.block_on(http.chain_get_block_messages(&cids[0])).unwrap();
+        // let block_messages: BlockMessages = block_messages_rpc.into();
+        let signed_messages = block_messages.secp_msg.clone();
+        println!("signed_messages = {:?}", signed_messages);
 
-        for cid in cids {
-            println!("cids = {:?}", cid);
-            let bm: BlockMessages = rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
-            println!("block_messages = {:?}", bm);
-            let signed_messages = bm.messages.clone();
-            for message in signed_messages {
-                //let (who,val) = extract_message(message.message);
-            }
-        }
+        let addr= forest_address::Address::new_id(1);
+        let nonce:u64 = rt.block_on(http.mpool_get_nonce(&addr)).unwrap();
+        println!("nonce = {:?}", nonce);
+
+//        let message = forest_message::UnsignedMessage::
+//        let res = rt.block_on(http.mpool_push(&message)).unwrap();
     }
 }

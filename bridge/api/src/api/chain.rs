@@ -4,10 +4,8 @@ use crate::helper;
 use crate::types::{Bytes, TipSet, DomainSeparationTag, ChainEpoch, Randomness, BytesRef, TipSetKey,
                    BlockHeader, CidJsonRef, BlockMessages, MessageReceipt, ParentMessage, ObjStat,
                    BigIntWrapper, UnsignedMessage, HeadChange, BigInt, Cid};
-use forest_blocks;
-
-//use forest_blocks::tipset::tipset_json::serialize;
-
+use forest_blocks::{self, tipset::tipset_json::TipsetJson};
+use rpc::BlockMessages as forest_BlockMessages;
 #[async_trait::async_trait]
 pub trait ChainApi: JsonApi {
 
@@ -15,7 +13,7 @@ pub trait ChainApi: JsonApi {
 //        self.subscribe("ChainNotify", vec![]).await
 //    }
 
-    async fn chain_head(&self) -> Result<forest_blocks::Tipset> {
+    async fn chain_head(&self) -> Result<TipsetJson> {
         self.request("ChainHead", vec![]).await
     }
 
@@ -48,7 +46,7 @@ pub trait ChainApi: JsonApi {
             .await
     }
 
-    async fn chain_get_block_messages(&self, cid: &forest_cid::Cid) -> Result<interpreter::BlockMessages> {
+    async fn chain_get_block_messages(&self, cid: &forest_cid::Cid) -> Result<forest_BlockMessages> {
         self.request("ChainGetBlockMessages", vec![helper::serialize(&forest_cid::json::CidJson(cid.clone()))])
             .await
     }

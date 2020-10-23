@@ -3,8 +3,8 @@ use crate::error::Result;
 use crate::helper;
 use crate::types::{TipSetKey, SignedMessage, Cid, UnsignedMessage, Address, MpoolUpdate, BigInt,
 BigIntWrapper, CidJson};
-use forest_address;
-use forest_message;
+use forest_address::{self, json::AddressJson};
+use forest_message::{self, signed_message::json::SignedMessageJson};
 #[async_trait::async_trait]
 pub trait MpoolApi: JsonApi {
     async fn mpool_pending(&self, key: &TipSetKey) -> Result<Vec<SignedMessage>> {
@@ -13,7 +13,7 @@ pub trait MpoolApi: JsonApi {
     }
 
     async fn mpool_push(&self, signed_msg: &forest_message::SignedMessage) -> Result<forest_cid::Cid> {
-        let cid: forest_cid::json::CidJson = self.request("MpoolPush", vec![helper::serialize(signed_msg)])
+        let cid: forest_cid::json::CidJson = self.request("MpoolPush", vec![helper::serialize(&SignedMessageJson(signed_msg.clone()))])
             .await?;
         Ok(cid.into())
     }
@@ -25,7 +25,7 @@ pub trait MpoolApi: JsonApi {
     }
 
     async fn mpool_get_nonce(&self, addr: &forest_address::Address) -> Result<u64> {
-        self.request("MpoolGetNonce", vec![helper::serialize(addr)])
+        self.request("MpoolGetNonce", vec![helper::serialize(&AddressJson(*addr))])
             .await
     }
 

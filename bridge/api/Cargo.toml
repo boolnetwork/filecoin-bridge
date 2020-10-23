@@ -35,9 +35,10 @@ plum_address = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
 plum_bigint = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
 plum_bytes = { version = "0.1.0" , git = "https://github.com/prz23/plum" }
 
-forest_address = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
-forest_message = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_address = { git = "https://github.com/prz23/forest-no-submodule" , branch="main", features = ["json"] }
+forest_message = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main", features = ["json"] }
 forest_cid = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 forest_bigint = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 interpreter = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
-forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
+forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" , features = ["json"] }
+rpc = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
