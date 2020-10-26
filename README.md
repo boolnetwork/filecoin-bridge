@@ -1,6 +1,6 @@
 # Filecoin Bridge
 
-A filecoin bridge base substrate.
+A filecoin bridge based on threshold signature scheme.
 
 ## Local Development
 
