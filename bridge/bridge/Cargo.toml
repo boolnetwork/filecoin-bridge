@@ -64,3 +64,4 @@ forest_vm = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="ma
 forest_encoding = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 forest_crypto = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 #subkey = { version = "2.0.0",git = "https://github.com/paritytech/substrate.git"}
+async-trait = "0.1.38"

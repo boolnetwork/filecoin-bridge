@@ -44,6 +44,9 @@ forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" , branch=
 forest_encoding = { git = "https://github.com/prz23/forest-no-submodule" , branch="main" }
 rpc = { git = "https://github.com/prz23/forest-no-submodule" , branch="main" }
 
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
 lotus-api-forest ={ path = "../api" }
 [dependencies.curv]
 git = "https://github.com/KZen-networks/curv"

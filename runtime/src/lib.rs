@@ -306,7 +306,7 @@ construct_runtime!(
 //		Witness: pallet_witness::{Module, Call, Storage, Event<T>, Config},
 //		Token: pallet_token::{Module, Call, Storage, Event<T>, Config},
 //		Feed: pallet_feed::{Module, Call, Storage, Event<T>, Config<T>},
-       	Tss: pallet_tss::{Module, Call, Storage, Event<T>},
+       	Tss: pallet_tss::{Module, Call, Config, Storage, Event<T>},
 	}
 );
 

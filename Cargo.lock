@@ -921,6 +921,7 @@ dependencies = [
 name = "bridge"
 version = "0.0.1"
 dependencies = [
+ "async-trait",
  "derive_more",
  "filecoin-bridge-runtime",
  "forest_address",
@@ -2433,6 +2434,8 @@ dependencies = [
  "sc-block-builder",
  "sc-client-api",
  "secp256k1",
+ "serde",
+ "serde_json",
  "serialization",
  "sp-api",
  "sp-block-builder",
@@ -2609,6 +2612,7 @@ dependencies = [
  "jsonrpc-core 15.1.0",
  "node-tss",
  "pallet-transaction-payment-rpc",
+ "pallet-tss",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -6924,6 +6928,7 @@ dependencies = [
  "frame-system 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pallet-timestamp",
  "parity-scale-codec",
+ "serde",
  "sp-core 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-io 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-runtime 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",

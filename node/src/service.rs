@@ -14,7 +14,7 @@ use sc_finality_grandpa::{FinalityProofProvider as GrandpaFinalityProofProvider,
 use bridge::{start_tss};
 use fc_adapter::{start_fc_service,};
 use futures::{channel::mpsc};
-
+use std::env;
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
@@ -187,27 +187,39 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 	let (senderbool, reciverbool) = mpsc::unbounded::<(Vec<u8>)>();
 	let (senderfc, reciverfc) = mpsc::unbounded::<(Vec<u8>)>();
 
-	let is_rocket = false;
+	let mut is_rocket = false;
+	let mut num:u64 = 0;
+	if env::var("Rocket").is_ok(){
+		is_rocket = true;
+	}else{
+		if env::var("NodeNum").is_ok(){
+			let node = env::var("NodeNum").unwrap();
+			num = node.parse().unwrap();
+		}
+	}
+
 	let tss = start_tss(
 		client.clone(),
 		transaction_pool.clone(),
 		0u64/*keystore.clone()*/,
 		is_rocket,
 		senderbool,
-		senderfc
+		senderfc,
+		num,
 	);
 
 	task_manager.spawn_essential_handle().spawn_blocking("tss", tss);
 
-	let fc_service = start_fc_service(
-		client.clone(),
-		transaction_pool.clone(),
-		reciverbool,
-		//reciverfc
-	);
+	if !is_rocket {
+		let fc_service = start_fc_service(
+			client.clone(),
+			transaction_pool.clone(),
+			reciverbool,
+			//reciverfc
+		);
 
-	task_manager.spawn_essential_handle().spawn_blocking("fc_service", fc_service);
-
+		task_manager.spawn_essential_handle().spawn_blocking("fc_service", fc_service);
+	}
 
 	let grandpa_config = sc_finality_grandpa::Config {
 		// FIXME #1578 make this available through chainspec

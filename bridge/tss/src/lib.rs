@@ -19,6 +19,9 @@ pub use gg18_keygen_client::key_gen;
 
 use lru::*;
 
+const PARTIES_CONST :u16= 3;
+const THREADHOLD_CONST :u16 = 2;
+
 #[post("/get", format = "json", data = "<request>")]
 fn get(
     db_mtx: State<RwLock<LruCache<Key,String>>>,
@@ -49,7 +52,7 @@ fn set(db_mtx: State<RwLock<LruCache<Key,String>>>, request: Json<Entry>) -> Jso
 
 #[post("/signupkeygen", format = "json")]
 fn signup_keygen(db_mtx: State<RwLock<LruCache<Key,String>>>) -> Json<Result<PartySignup, ()>> {
-    let parties = 3;
+    let parties = PARTIES_CONST; //3;
 
     let key = "signup-keygen".to_string();
 
@@ -80,7 +83,7 @@ fn signup_keygen(db_mtx: State<RwLock<LruCache<Key,String>>>) -> Json<Result<Par
 fn message(db_mtx: State<RwLock<LruCache<String, u64>>>, request: Json<Message>) -> Json<Result<(), ()>> {
     let entry: Message = request.0;
     let mut value = 0;
-    let threshold = 1;
+    let threshold = THREADHOLD_CONST as u64; //2
 
     let mut h = db_mtx.write().unwrap();
 
@@ -89,7 +92,7 @@ fn message(db_mtx: State<RwLock<LruCache<String, u64>>>, request: Json<Message>)
         None => 0u64,
     };
 
-    if value < threshold + 1{
+    if value < threshold{
         value = value + 1;
     } else {
         return Json(Err(()));
@@ -102,7 +105,7 @@ fn message(db_mtx: State<RwLock<LruCache<String, u64>>>, request: Json<Message>)
 
 #[post("/signupsign", format = "json", data = "<request>")]
 fn signup_sign(db_mtx: State<RwLock<LruCache<Key,String>>>, request: Json<Message>) -> Json<Result<PartySignup, ()>> {
-    let threshold = 1 + 1;
+    let threshold = THREADHOLD_CONST; //2;
 
     let mut key = "signup-sign".to_string();
     let entry: String = request.0.key;
@@ -137,7 +140,11 @@ fn signup_sign(db_mtx: State<RwLock<LruCache<Key,String>>>, request: Json<Messag
     Json(Ok(party_signup))
 }
 
-pub fn start_sm_manager() {
+pub fn push(x:u64){
+    common::push(x);
+}
+
+pub fn start_sm_manager(num:u64) {
     let db:LruCache<Key,u64> = LruCache::new(2500);
     let db_mtx = RwLock::new(db);
 

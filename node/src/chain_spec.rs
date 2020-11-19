@@ -1,7 +1,7 @@
 use sp_core::{Pair, Public, sr25519};
 use filecoin_bridge_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, TssConfig, SystemConfig, WASM_BINARY, Signature
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -133,6 +133,8 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
+
+	let root_key_u8:[u8;32] = root_key.clone().into();
 	GenesisConfig {
 		frame_system: Some(SystemConfig {
 			// Add Wasm runtime to storage.
@@ -151,7 +153,10 @@ fn testnet_genesis(
 		}),
 		pallet_sudo: Some(SudoConfig {
 			// Assign network admin rights.
-			key: root_key,
+			key: root_key.clone(),
+		}),
+		pallet_tss: Some(TssConfig {
+			key: root_key_u8.to_vec(),
 		}),
 	}
 }

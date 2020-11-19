@@ -36,8 +36,8 @@ pub trait ChainApi: JsonApi {
             .await
     }
 
-    async fn chain_get_block(&self, cid: &Cid) -> Result<BlockHeader> {
-        self.request("ChainGetBlock", vec![helper::serialize(&CidJsonRef(cid))])
+    async fn chain_get_block(&self, cid: &forest_cid::Cid) -> Result<BlockHeader> {
+        self.request("ChainGetBlock", vec![helper::serialize(&forest_cid::json::CidJson(cid.clone()))])
             .await
     }
 
@@ -56,8 +56,8 @@ pub trait ChainApi: JsonApi {
             .await
     }
 
-    async fn chain_get_parent_messages(&self, cid: &Cid) -> Result<Vec<ParentMessage>> {
-        self.request("ChainGetParentMessages", vec![helper::serialize(&CidJsonRef(cid))])
+    async fn chain_get_parent_messages(&self, cid:  &forest_cid::Cid) -> Result<Vec<ParentMessage>> {
+        self.request("ChainGetParentMessages", vec![helper::serialize(&forest_cid::json::CidJson(cid.clone()))])
             .await
     }
 

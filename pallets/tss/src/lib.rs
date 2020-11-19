@@ -79,7 +79,20 @@ decl_storage! {
         pub VerifiedAccount get(fn verified_account): Option<Data<T::AccountId>>;
 
         FileCoinToken get(fn file_coin_token): map hasher(blake2_128_concat) T::AccountId => u128;
+
+        AlicePubKey get(fn alice_pubkey): Vec<u8>;
+
 	}
+	   add_extra_genesis {
+			config(key): Vec<u8>;
+		    build(|config| {
+		        //let keys = key.as_bytes();
+		        //let encoded:Vec<u8> = T::AccountId::encode(&mut config.key);
+		        //let key:AccountId32 = T::AccountId::decode(&mut &encoded[..]).unwrap();
+		        Module::<T>::initialize_key(&config.key);
+		        Module::<T>::initialize_url();
+		    })
+		}
 }
 
 decl_event!(
@@ -254,12 +267,20 @@ decl_module! {
             Ok(())
         }
 
-
     }
 }
 
 
 impl<T: Trait> Module<T> {
+	fn initialize_key(key:&[u8]){
+		AlicePubKey::put(key.to_vec());
+	}
+
+	fn initialize_url(){
+		let url:Vec<u8> = vec![0x68,0x74,0x74,0x70,0x3a,0x2f,0x2f,0x30,0x2e,0x30,0x2e,0x30,0x2e,0x30,0x3a,0x38,0x30,0x30,0x31];
+		TssUrl::put(url);
+	}
+
 	fn tss_index() -> u64 {
 		let index_old = Index::get() + 1;
 		Index::put(index_old);
@@ -315,7 +336,6 @@ impl<T: Trait> Module<T> {
 			TssKeyType::Bool => { TssPubKeyBool::put(pubkey.clone()); },
 			TssKeyType::FileCoin => { TssPubKeyFC::put(pubkey.clone()); },
 			TssKeyType::Normal => { },
-
 		}
 		TssPubKeyVec::insert(pubkey,pubkey_vec);
 

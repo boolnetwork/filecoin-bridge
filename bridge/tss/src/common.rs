@@ -52,11 +52,20 @@ impl UrlConfig{
 use std::sync::Mutex;
 
 lazy_static!{
-    // pub static ref tss_url: Url = Url{ url : "afa".to_string() };
-    //pub static ref tss_url2: Mutex<Vec<String>> = Mutex::new(vec!["http://127.0.0.1:8001".to_string()]);
     pub static ref TEST_URL: Mutex<String> = Mutex::new("http://127.0.0.1:8001".to_string());
     pub static ref STORE_MAP: Mutex<String> = Mutex::new("store_map".to_string());
-    //pub static ref test_u64: Mutex<u64> = Mutex::new("http://127.0.0.1:8001".to_string());
+    pub static ref SAVE_STORE: Mutex<Vec<u64>> =  Mutex::new(vec![]);
+}
+
+pub fn push(x:u64){
+    println!("===filename==in={:?}",x);
+    SAVE_STORE.lock().unwrap().push(x);
+}
+
+pub fn get() -> String{
+    let num = SAVE_STORE.lock().unwrap()[0];
+    let filename = format!("{}-{}{}","test",num,".ron");
+    filename
 }
 
 const SAVE_FILE: &str = "test02.ron";
@@ -87,7 +96,7 @@ pub fn save(pubkey:Vec<u8>, origin_store:&str) -> String{
     let new_store_name = random_tss_store(origin_store);
 
     let db =
-        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(SAVE_FILE, HashMap::new()).unwrap();
+        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(get(), HashMap::new()).unwrap();
     db.load().unwrap();
     db.write(|db| {
         db.insert(pubkey,new_store_name.clone().into());
@@ -98,7 +107,7 @@ pub fn save(pubkey:Vec<u8>, origin_store:&str) -> String{
 
 pub fn find_store(pubkey:Vec<u8>) -> String{
     let db =
-        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(SAVE_FILE, HashMap::new()).unwrap();
+        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(get(), HashMap::new()).unwrap();
 
     db.load().unwrap();
     let a = db.read(|map| {
@@ -110,7 +119,7 @@ pub fn find_store(pubkey:Vec<u8>) -> String{
 
 pub fn init(){
     let db =
-        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(SAVE_FILE, HashMap::new()).unwrap();
+        FileDatabase::<HashMap<Vec<u8>, String>, Ron>::load_from_path_or(get(), HashMap::new()).unwrap();
     if db.load().is_ok(){
         return ;
     }else {

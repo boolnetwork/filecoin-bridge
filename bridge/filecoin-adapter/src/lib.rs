@@ -26,7 +26,10 @@ use forest_message::{self, UnsignedMessage};
 use forest_address::{self, Address};
 use forest_encoding::Cbor;
 use rpc::BlockMessages as forest_BlockMessages;
+use serde_json::*;
+use serde::*;
 
+use std::time::Duration;
 lazy_static! {
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> = Mutex::new(vec!["test"]);
 }
@@ -43,9 +46,9 @@ where
     V: SuperviseClient<B> + Send + Sync + 'static,
     B: BlockT,
 {
-    pub fn new(spv: V, rec: mpsc::UnboundedReceiver<(Vec<u8>, Value)>) -> Self {
+    pub fn new(spv: Arc<V>, rec: mpsc::UnboundedReceiver<(Vec<u8>, Value)>) -> Self {
         FCMessageForward {
-            spv: Arc::new(spv),
+            spv: spv,
             reciver: rec,
             a: PhantomData,
         }
@@ -109,11 +112,23 @@ where
         })),
     );
 
+    let tx_sender_arc = Arc::new(tx_sender);
+    let tx_sender_arc2 = tx_sender_arc.clone();
+//    thread::spawn( move || {
+//        thread::sleep(Duration::from_secs(15));
+//        //TODO::Send event
+//        // 测试用： 自动 key gen
+//        println!("======================submit_key_gen_bool_tss==========");
+//        tx_sender_arc2.submit_key_gen_bool_tss();
+//
+//        //tx_sender.submit_fc_transfer_tss();
+//    });
+
     let (fc_parse_sender,
         fc_parse_recvier) = unbundchannel();
 
     let fc_message_forward =
-        FCMessageForward::new(tx_sender, fc_parse_recvier);
+        FCMessageForward::new(tx_sender_arc, fc_parse_recvier);
 
     // loop to fetch Message from FileCoin & send to fc_sender
     fc_message_fetch_parse(fc_parse_sender, reciver,ChainState::new(client));
@@ -126,15 +141,23 @@ type MessageStreamR<V> = mpsc::UnboundedReceiver<(Vec<u8>, V)>;
 type MessageStreamS<V> = mpsc::UnboundedSender<(Vec<u8>, V)>;
 type CidBytes = Vec<u8>;
 
+#[derive(Debug,Deserialize,Serialize)]
+pub struct Id {
+    pub id: Vec<u8>
+}
+
 fn extract_message(message: UnsignedMessage) -> (CidBytes, Address, Vec<u8>, u128) {
 
     let revice_address = message.to.clone();
     let _from_address = message.from.clone();
-    let deposit_boolid = message.params.bytes().clone();
+    //let deposit_boolid:Id = message.params.deserialize().unwrap();
+    let deposit_boolid = message.params.bytes().to_vec();
+    //let id:Id = serde_json::from_str(&deposit_boolid).unwrap();
     let deposit_amount = message.value.clone().to_u128().unwrap();
     let cid = message.cid().unwrap().to_bytes();
+    println!("extract_message deposit_boolid={:?} deposit_amount={:?}",deposit_boolid,deposit_amount);
 
-    (cid, revice_address, deposit_boolid.into(), deposit_amount)
+    (cid, revice_address, deposit_boolid, deposit_amount)
 }
 
 pub fn unbundchannel() -> (MessageStreamS<Value>, MessageStreamR<Value>) {
@@ -151,7 +174,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
         C::Api: VendorApi<Block>,
 {
     thread::spawn(move || {
-        let height = 0u64;
+        let mut height = 0u64;
 
         let mut recv_addr: Vec<u8> = Vec::new();
         loop {
@@ -164,9 +187,11 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
                 break;
             }
         }
-        println!("get recvice address {:?}", recv_addr);
+        let addr = Address::new_secp256k1(&recv_addr).unwrap();
+        println!("get recvice address {}",addr );
+
         loop {
-            thread::sleep(time::Duration::new(7, 0));
+            thread::sleep(time::Duration::new(1, 0));
             let mut rt = Runtime::new().unwrap();
             let http = filecoin_http::new("http://127.0.0.1:1234/rpc/v0");
             let ret_json: TipsetJson = rt.block_on(http.chain_head()).unwrap();
@@ -176,17 +201,21 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: mpsc::UnboundedSender<(Vec<u8>,
             if new_height == height {
                 continue;
             }
-
+            height = new_height;
             let mut message_set = HashMap::<Vec<u8>, (Vec<u8>, u128)>::new();
             let cids = ret.cids();
             for cid in cids {
-                println!("cids = {:?}", cid);
+                println!("cids = {:?} height={:?}", cid, height);
                 let block_messages: forest_BlockMessages =
                     rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
                // let block_messages: BlockMessages = block_messages_rpc.into();
-                let signed_messages = block_messages.secp_msg.clone();
-                for message in signed_messages {
-                    let (cid, revice_addr, who, val) = extract_message(message.message().clone());
+                //let signed_messages = block_messages.secp_msg.clone();
+               // println!("signed_messages = {:?}", signed_messages.len());
+                let signed_bls_messages = block_messages.bls_msg.clone();
+                println!("signed_bls_messages = {:?}", signed_bls_messages.len());
+
+                for message in signed_bls_messages {
+                    let (cid, revice_addr, who, val) = extract_message(message.clone());
                     if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {
                         message_set.insert(cid, (who, val));
                     }

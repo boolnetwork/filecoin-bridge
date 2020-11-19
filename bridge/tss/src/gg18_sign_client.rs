@@ -77,6 +77,8 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE),&'st
 //        },
 //    }
 
+    println!("aaaaaaaaaaaaaaaaaa");
+
     let (party_num_int, uuid) = match signup(&client,Message{ key:ripemd160(message).to_string()}){
         Ok(PartySignup { number, uuid }) => (number, uuid),
         Err(_) =>  { return Err("error"); },

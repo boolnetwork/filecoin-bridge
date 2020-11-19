@@ -21,7 +21,7 @@ use filecoin_bridge_runtime::{UncheckedExtrinsic, apis::VendorApi ,Call, SignedP
 							  , Event, VERSION, Runtime, AccountId, Signature, Balance, Index};
 
 use tss_signer::{set_pubkey, sign_btc_hex_return_hex, sign_by_tss};
-use node_tss::{start_sm_manager, key_gen};
+use node_tss::{start_sm_manager, key_gen, push};
 
 use lotus_api_forest::api::MpoolApi;
 use forest_message;
@@ -29,6 +29,8 @@ use forest_cid;
 use forest_vm::{self, Serialized};
 use forest_encoding::Cbor;
 use forest_crypto;
+
+use async_trait::async_trait;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -57,6 +59,11 @@ pub enum TxType {
 
 	BoolDeposit(Vec<u8>,TokenType,u64), //who tokentype amount
 	FCDeposit(Vec<u8>,TokenType,u128), //who tokentype amount
+
+	// TssKeyActive
+	TssKeyGenActive(Vec<u8>,Vec<u8>),
+	TssKeyGenBoolActive(Vec<u8>,Vec<u8>),
+	TssKeyGenFcActive(Vec<u8>,Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
@@ -72,7 +79,7 @@ impl TxMessage{
 		}
 	}
 }
-
+#[async_trait]
 pub trait SuperviseClient<B>
 	where
 		B:BlockT
@@ -88,6 +95,8 @@ pub trait SuperviseClient<B>
 
 	fn submit(&self, message: TxMessage);
 	fn submit_fc_transfer_tss(&self, message: TxMessage);
+
+	fn submit_key_gen_bool_tss(&self);
 }
 
 pub struct PacketNonce<B>
@@ -208,7 +217,6 @@ impl<A,Block,B,C> TxSender<A,Block,B,C>
 	}
 }
 
-
 impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 	where
 		A: TransactionPool<Block = Block> + 'static,
@@ -285,8 +293,20 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let function = match relay_message.tx_type {
 				TxType::System => Call::System(SystemCall::remark(vec![1u8])),
 				TxType::TssKeyGen(tss_pubkey,pk_vec) => Call::Tss(TssCall::key_created_result_is(tss_pubkey,pk_vec,vec![0u8])),
-				TxType::TssKeyGenBool(tss_pubkey,pk_vec) => Call::Tss(TssCall::key_created_result_is_bool(tss_pubkey,pk_vec,vec![0u8])),
+				TxType::TssKeyGenBool(tss_pubkey,pk_vec) => {
+					let tss_gen_pubkey = tss_pubkey.clone(); // u8 65
+					let publickey = secp256k1::PublicKey::parse_slice(&tss_gen_pubkey,None).unwrap();
+					let compressed_pubkey = publickey.serialize_compressed();
+					let pubkey_blake = sp_io::hashing::blake2_256(&compressed_pubkey[..]);
+					let local_id:AccountId = pubkey_blake.into();
+					println!("========bool_accountid========{:?}",local_id);
+					Call::Tss(TssCall::key_created_result_is_bool(tss_pubkey,pk_vec,vec![0u8]))},
 				TxType::TssKeyGenFc(tss_pubkey,pk_vec) => Call::Tss(TssCall::key_created_result_is_fc(tss_pubkey,pk_vec,vec![0u8])),
+				//active
+				TxType::TssKeyGenActive(url,store) => Call::Tss(TssCall::key_gen(url,store)),
+				TxType::TssKeyGenBoolActive(url,store) => Call::Tss(TssCall::key_gen_bool(url,store)),
+				TxType::TssKeyGenFcActive(url,store) => Call::Tss(TssCall::key_gen_fc(url,store)),
+
 				//TxType::BtcAddressSet(tss_pubkey) => Call::BtcBridge(BtcBridgeCall::set_tss_revice_address(tss_pubkey)),
 				//TxType::Signature(signed_btc_tx) => Call::BtcBridge(BtcBridgeCall::put_signedbtctxproposal(signed_btc_tx)),
 				_ => Call::System(SystemCall::remark(vec![1u8])),
@@ -322,15 +342,29 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			);
 			let signature = raw_payload.using_encoded(|payload| self.ed_key.sign(payload));
 			let (function, extra, _) = raw_payload.deconstruct();
-
 			let extrinsic =
 				UncheckedExtrinsic::new_signed(function, local_id.into(), signature.into(), extra);
 			let xt: TransactionFor<A> = Decode::decode(&mut &extrinsic.encode()[..]).unwrap();
 			debug!(target:"witness", "extrinsic {:?}", xt);
 			let source = sp_runtime::transaction_validity::TransactionSource::External;
-			let result = block_on(self.tx_pool.submit_one(&at, source, xt));
-			info!("SuperviseClient submit transaction {:?}", result);
+			//let result = block_on(self.tx_pool.submit_one(&at, source.clone(), xt));
+			let result2 = self.tx_pool.submit_one(&at, source, xt);
+			std::thread::spawn(|| {
+				let mut rt = tokio::runtime::Runtime::new().unwrap();
+				let res = rt.block_on(result2);
+				println!("======submit===result==={:?}",res);
+			});
+			//info!("SuperviseClient submit transaction {:?}", result);
 		}
+	}
+
+	fn submit_key_gen_bool_tss(&self){
+		let url:Vec<u8> = vec![104u8, 116, 116, 112, 58, 47, 47, 49, 50, 55, 46, 48, 46, 48, 46, 49, 58, 56, 48, 48, 49];
+		let store:Vec<u8> = vec![102u8, 105, 108, 101, 99, 111, 105, 110, 46, 115, 116, 111, 114, 101];
+		let data1:TxMessage = TxMessage::new(TxType::TssKeyGenActive(url.clone(),store.clone()));
+		let data2:TxMessage = TxMessage::new(TxType::TssKeyGenBoolActive(url.clone(),store.clone()));
+		let data3:TxMessage = TxMessage::new(TxType::TssKeyGenFcActive(url.clone(),store.clone()));
+        self.submit(data1);
 	}
 
 	fn submit_fc_transfer_tss(&self, relay_message: TxMessage) {
@@ -382,11 +416,22 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 
 			let signature:Signature = raw_payload.using_encoded(|payload|
 				{
+//					let url = self.tss_url();
+//					let str_url = core::str::from_utf8(&url).unwrap();
+//					let sig = sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey).unwrap();
+//					ecdsa::Signature::from_slice(&sig).into()
+
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
-					let sig = sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey).unwrap();
-					ecdsa::Signature::from_slice(&sig).into()
+					let sig:Signature = match sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey){
+						Ok(sig) => { ecdsa::Signature::from_slice(&sig).into() },
+						Err(_) => { ecdsa::Signature::default().into() },
+					};
+					sig
 				});
+			if signature == ecdsa::Signature::default().into(){
+				return;
+			}
 			let (function, extra, _) = raw_payload.deconstruct();
 
 			let extrinsic =
@@ -394,8 +439,13 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let xt: TransactionFor<A> = Decode::decode(&mut &extrinsic.encode()[..]).unwrap();
 			debug!(target:"witness", "extrinsic {:?}", xt);
 			let source = sp_runtime::transaction_validity::TransactionSource::External;
-			let result = block_on(self.tx_pool.submit_one(&at, source, xt));
-			info!("SuperviseClient submit transaction {:?}", result);
+			//let result = block_on(self.tx_pool.submit_one(&at, source, xt));
+			let result2 = self.tx_pool.submit_one(&at, source, xt);
+			std::thread::spawn(|| {
+				let mut rt = tokio::runtime::Runtime::new().unwrap();
+				rt.block_on(result2);
+			});
+			//info!("SuperviseClient submit transaction {:?}", result);
 		}
 	}
 
@@ -468,10 +518,12 @@ impl <V,B>TssSender<V,B>
         match key_gen(str_url,store2){
 			Ok((pk,pk_vec)) => {
 				let data = TxMessage::new(TxType::TssKeyGen(pk.to_vec(),pk_vec));
+				println!("=========key_gen===submit_tx=1==");
 				self.submit_tx(data);
-				let data2 = TxMessage::new(TxType::BtcAddressSet(pk.to_vec()));
-				self.submit_tx(data2);
-				set_pubkey(pk.to_vec(),store2);
+				//println!("=========key_gen===submit_tx=2==");
+				//let data2 = TxMessage::new(TxType::BtcAddressSet(pk.to_vec()));
+				//self.submit_tx(data2);
+				//set_pubkey(pk.to_vec(),store2);
 			},
 			_ => return ,
 		}
@@ -617,6 +669,7 @@ pub fn start_tss<A, B, C, Block>(
 	enable_tss_message_intermediary:bool,
 	senderbool: FcPubkeySender,
 	senderfc: FcPubkeySender,
+	num:u64,
 ) -> impl Future<Output = ()> + 'static
 	where
 		A: TransactionPool<Block = Block> + 'static,
@@ -651,8 +704,10 @@ pub fn start_tss<A, B, C, Block>(
 
 	if enable_tss_message_intermediary{
 		thread::spawn(move || {
-			start_sm_manager();
+			start_sm_manager(num);
 		});
+	}else{
+		push(num);
 	}
 	tss_sender.start(TssRole::Party ,!enable_tss_message_intermediary /*, on_exit*/)
 }
