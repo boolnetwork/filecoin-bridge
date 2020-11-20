@@ -215,6 +215,26 @@ impl<A,Block,B,C> TxSender<A,Block,B,C>
 
 		p_nonce.nonce
 	}
+
+	fn get_nonce_bool(&self,accountid:[u8;32]) -> u64 {
+		let mut p_nonce = self.packet_nonce.lock();
+		let info = self.client.info();
+		let at: BlockId<Block> = BlockId::Hash(info.best_hash);
+
+		if p_nonce.last_block == at {
+			p_nonce.nonce = p_nonce.nonce + 1;
+		} else {
+			p_nonce.nonce = self
+				.client
+				.runtime_api()
+				.account_nonce(&at, &accountid.into())
+				.unwrap();
+			p_nonce.last_block = at;
+		}
+
+		p_nonce.nonce
+	}
+
 }
 
 impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
@@ -378,7 +398,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 		let info = self.client.info();
 		let at = BlockId::Hash(info.best_hash);
 		{
-			let nonce = self.get_nonce();
+			let nonce = self.get_nonce_bool(pubkey_blake.into());
 
 			let function = match relay_message.tx_type {
 				TxType::FCDeposit(who,_tokentype,value) => Call::Tss(TssCall::deposit_token(who,value)),
@@ -420,10 +440,12 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 //					let str_url = core::str::from_utf8(&url).unwrap();
 //					let sig = sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey).unwrap();
 //					ecdsa::Signature::from_slice(&sig).into()
-
+                    println!("=========payload=============={:?}",payload.len());
+					let message = sp_io::hashing::blake2_256(&payload[..]);
+					println!("=========message=============={:?}",message.len());
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
-					let sig:Signature = match sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey){
+					let sig:Signature = match sign_by_tss(message.to_vec(),str_url,tss_gen_pubkey){
 						Ok(sig) => { ecdsa::Signature::from_slice(&sig).into() },
 						Err(_) => { ecdsa::Signature::default().into() },
 					};
@@ -443,7 +465,8 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let result2 = self.tx_pool.submit_one(&at, source, xt);
 			std::thread::spawn(|| {
 				let mut rt = tokio::runtime::Runtime::new().unwrap();
-				rt.block_on(result2);
+				let res = rt.block_on(result2);
+				info!("==========FileCoin Deposit========== {:?}", res);
 			});
 			//info!("SuperviseClient submit transaction {:?}", result);
 		}

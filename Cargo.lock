@@ -12175,7 +12175,7 @@ dependencies = [
  "curv 0.2.6",
  "keys",
  "lazy_static",
- "libsecp256k1 0.2.2",
+ "libsecp256k1 0.3.5",
  "log 0.4.11",
  "merkle",
  "node-tss",

@@ -307,30 +307,35 @@ pub fn poll_for_p2p(
 #[allow(dead_code)]
 pub fn check_sig(r: &FE, s: &FE, msg: &BigInt, pk: &GE) {
     use secp256k1::{verify, Message, PublicKey, PublicKeyFormat, Signature};
-
+    println!("check_sig 1");
     let raw_msg = BigInt::to_vec(&msg);
+    println!("check_sig 1 1 raw_msg {:?}",raw_msg.len());
     let mut msg: Vec<u8> = Vec::new(); // padding
+    println!("check_sig 1 2");
     msg.extend(vec![0u8; 32 - raw_msg.len()]);
+    println!("check_sig 1 3");
     msg.extend(raw_msg.iter());
-
+    println!("check_sig 2");
     let msg = Message::parse_slice(msg.as_slice()).unwrap();
     let mut raw_pk = pk.pk_to_key_slice();
     if raw_pk.len() == 64 {
         raw_pk.insert(0, 4u8);
     }
+    println!("check_sig 3");
     let pk = PublicKey::parse_slice(&raw_pk, Some(PublicKeyFormat::Full)).unwrap();
+    println!("check_sig 4");
 
     let mut compact: Vec<u8> = Vec::new();
     let bytes_r = &r.get_element()[..];
     compact.extend(vec![0u8; 32 - bytes_r.len()]);
     compact.extend(bytes_r.iter());
-
+    println!("check_sig 5");
     let bytes_s = &s.get_element()[..];
     compact.extend(vec![0u8; 32 - bytes_s.len()]);
     compact.extend(bytes_s.iter());
-
+    println!("check_sig 6");
     let secp_sig = Signature::parse_slice(compact.as_slice()).unwrap();
-
+    println!("check_sig 7");
     let is_correct = verify(&msg, &secp_sig, &pk);
     assert!(is_correct);
 }

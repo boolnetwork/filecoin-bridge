@@ -269,8 +269,8 @@ impl SignTxInput for TransactionInputSigner{
     fn sign_by_tss(&self, message:Vec<u8>, url:&str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
         let res = sign_vec(url, &message,pubkey_tss);
         if res.is_ok(){
-            let (r,s,fe_r,fe_s):(SecretKey,SecretKey,FE,FE) = res.unwrap();
-            return Ok(r_s_to_vec(r,s,&fe_r,&fe_s));
+            let (r,s,fe_r,fe_s,recid):(SecretKey,SecretKey,FE,FE,u8) = res.unwrap();
+            return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid,SignatureType::BTC));
         }else {
             return Err("abort");
         }
@@ -278,21 +278,26 @@ impl SignTxInput for TransactionInputSigner{
 
 }
 
+pub enum SignatureType{
+    FC,
+    BTC,
+}
 pub fn sign_by_tss(message: Vec<u8>, url: &str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
     let res = sign_vec(url, &message, pubkey_tss);
     if res.is_ok(){
-        let (r,s,fe_r,fe_s):(SecretKey,SecretKey,FE,FE) = res.unwrap();
-        return Ok(r_s_to_vec(r,s,&fe_r,&fe_s));
+        let (r,s,fe_r,fe_s,recid):(SecretKey,SecretKey,FE,FE,u8) = res.unwrap();
+
+        return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid, SignatureType::FC));
     }else {
         return Err("abort");
     }
 }
 
-pub fn r_s_to_vec(_r:SecretKey,_s:SecretKey, a:&FE, b:&FE) -> Vec<u8> {
-    convert_signtature(a,b)
+pub fn r_s_to_vec(_r:SecretKey,_s:SecretKey, a:&FE, b:&FE, recid:u8, sigtype:SignatureType) -> Vec<u8> {
+    convert_signtature(a,b, recid, sigtype)
 }
 
-fn convert_signtature(r:&FE, s:&FE) -> Vec<u8>{
+fn convert_signtature(r:&FE, s:&FE, recid:u8, sigtype:SignatureType) -> Vec<u8>{
     let mut compact: Vec<u8> = Vec::new();
     let bytes_r = &r.get_element()[..];
     compact.extend(vec![0u8; 32 - bytes_r.len()]);
@@ -303,8 +308,18 @@ fn convert_signtature(r:&FE, s:&FE) -> Vec<u8>{
     compact.extend(bytes_s.iter());
 
     let secp_sig = secpSignature::parse_slice(compact.as_slice()).unwrap();
-    let sig = secp_sig.serialize_der().as_ref().to_vec();
-    sig
+    match sigtype {
+        SignatureType::BTC => {
+            let mut sig = secp_sig.serialize_der().as_ref().to_vec();
+            sig
+        },
+        SignatureType::FC => {
+            let mut sig = secp_sig.serialize().as_ref().to_vec();
+            sig.push(recid);
+            return sig
+        },
+    }
+
 }
 
 use std::mem;

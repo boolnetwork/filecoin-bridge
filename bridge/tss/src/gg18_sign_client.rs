@@ -31,13 +31,13 @@ pub fn sign_btc_tx(_url:&str, _message:&str) {
 
 }
 
-pub fn sign_vec(url:&str, message:&Vec<u8>, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE),&'static str> {
+pub fn sign_vec(url:&str, message:&Vec<u8>, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&'static str> {
     let message_str = hex::encode(message);
     sign(url,&message_str, pubkey)
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE),&'static str> {
+pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&'static str> {
 
     save_url(String::from(url));
     init();
@@ -516,19 +516,18 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE),&'st
     println!("s: {:?} \n", sig.s.get_element());
     println!("recid: {:?} \n", sig.recid.clone());
 
-    let sign_json = serde_json::to_string(&(
-        "r",
-        (BigInt::from(&(sig.r.get_element())[..])).to_str_radix(16),
-        "s",
-        (BigInt::from(&(sig.s.get_element())[..])).to_str_radix(16),
-    ))
-    .unwrap();
+//    let sign_json = serde_json::to_string(&(
+//        "r",
+//        (BigInt::from(&(sig.r.get_element())[..])).to_str_radix(16),
+//        "s",
+//        (BigInt::from(&(sig.s.get_element())[..])).to_str_radix(16),
+//    ))
+//    .unwrap();
 
     // check sig against secp256k1
     check_sig(&sig.r, &sig.s, &message_bn, &y_sum);
-
-    fs::write("signature".to_string(), sign_json).expect("Unable to save !");
-    Ok((sig.r.get_element(),sig.s.get_element(),sig.r ,sig.s))
+    //fs::write("signature".to_string(), sign_json).expect("Unable to save !");
+    Ok((sig.r.get_element(),sig.s.get_element(),sig.r ,sig.s, sig.recid.clone()))
 }
 
 fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(

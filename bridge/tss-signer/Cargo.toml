@@ -19,7 +19,7 @@ merkle = { branch = "sub2.0", git = "https://github.com/ABMatrix/merkle.git", de
 bit-vec =  { git = "https://github.com/ABMatrix/bit-vec.git", default-features = false }
 rustc-hex = { version = "2" }
 base58 = { version = "0.1" }
-libsecp256k1 = {version = "0.2.2", package = "libsecp256k1"}
+libsecp256k1 = {version = "0.3.5", package = "libsecp256k1"}
 secp256k1 = {version = "0.15.3", package = "secp256k1"}
 lazy_static = "*"
 node-tss = {version = "0.0.1",  path = "../../bridge/tss"}
