@@ -34,21 +34,21 @@ lazy_static! {
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> = Mutex::new(vec!["test"]);
 }
 
-type Value = u128;
-type CidBytes = Vec<u8>;
-type BoolTargetAccountId = Vec<u8>;
-type FromAddress = Vec<u8>;
+type FCValue = u128;
+type FCMessageCidBytes = Vec<u8>;
+type SubTargetAccountId = Vec<u8>;
+type FCFromAddress = Vec<u8>;
 
-type StreamData<V> = (BoolTargetAccountId, V, FromAddress);
+type StreamData<V> = (SubTargetAccountId, V, FCFromAddress);
 type MessageStreamR<V> = mpsc::UnboundedReceiver<StreamData<V>>;
 type MessageStreamS<V> = mpsc::UnboundedSender<StreamData<V>>;
-type DepositData<V> = (BoolTargetAccountId, V, FromAddress);
-type ExtractMessage<V> = (CidBytes, Address, BoolTargetAccountId, V, FromAddress);
+type DepositData<V> = (SubTargetAccountId, V, FCFromAddress);
+type ExtractMessage<V> = (FCMessageCidBytes, Address, SubTargetAccountId, V, FCFromAddress);
 
 #[derive(Debug)]
 pub struct FCMessageForward<V, B> {
     pub spv: Arc<V>,
-    pub reciver: MessageStreamR<Value>,
+    pub reciver: MessageStreamR<FCValue>,
     pub a: std::marker::PhantomData<B>,
 }
 
@@ -57,7 +57,7 @@ where
     V: SuperviseClient<B> + Send + Sync + 'static,
     B: BlockT,
 {
-    pub fn new(spv: Arc<V>, rec: MessageStreamR<Value>) -> Self {
+    pub fn new(spv: Arc<V>, rec: MessageStreamR<FCValue>) -> Self {
         FCMessageForward {
             spv: spv,
             reciver: rec,
@@ -132,13 +132,13 @@ where
     let fc_message_forward =
         FCMessageForward::new(tx_sender_arc, fc_parse_recvier);
 
-    // loop to fetch Message from FileCoin & send to fc_sender
+    // to fetch Message from FileCoin & send to fc_sender
     fc_message_fetch_parse(fc_parse_sender, reciver,ChainState::new(client));
-    // main thread to revice & parse FileCoin Message and submit to filecoin
+    // to revice & parse FileCoin Message and submit to filecoin
     fc_message_forward.start_sign_push_fc_message()
 }
 
-fn extract_message(message: UnsignedMessage) -> ExtractMessage<Value> {
+fn extract_message(message: UnsignedMessage) -> ExtractMessage<FCValue> {
 
     let revice_address = message.to.clone();
     let from_address = message.from.to_bytes();
@@ -150,12 +150,12 @@ fn extract_message(message: UnsignedMessage) -> ExtractMessage<Value> {
     (cid, revice_address, deposit_boolid, deposit_amount, from_address)
 }
 
-pub fn get_fc_message_parse_channel() -> (MessageStreamS<Value>, MessageStreamR<Value>) {
-    let (sender, reciver) = mpsc::unbounded::<(Vec<u8>, Value, Vec<u8>)>();
+pub fn get_fc_message_parse_channel() -> (MessageStreamS<FCValue>, MessageStreamR<FCValue>) {
+    let (sender, reciver) = mpsc::unbounded::<(Vec<u8>, FCValue, Vec<u8>)>();
     (sender, reciver)
 }
 
-pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<Value>, _reciver: FcPubkeySender, state: ChainState<Block,B,C>)
+pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciver: FcPubkeySender, state: ChainState<Block,B,C>)
     where
         Block: BlockT,
         B: backend::Backend<Block> + Send + Sync + 'static,
@@ -168,7 +168,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<Value>, _reciver
 
         let mut recv_addr: Vec<u8> = Vec::new();
         loop {
-            thread::sleep(time::Duration::new(30, 0));
+            thread::sleep(time::Duration::new(10, 0));
             let pubkey = state.tss_pubkey();
             if pubkey.len() == 0{
                 continue;
@@ -178,7 +178,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<Value>, _reciver
             }
         }
         let addr = Address::new_secp256k1(&recv_addr).unwrap();
-        println!("get recvice address {}",addr );
+        println!("token recvice address in Filecoin is {}",addr );
 
         loop {
             thread::sleep(time::Duration::new(1, 0));
@@ -192,7 +192,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<Value>, _reciver
                 continue;
             }
             height = new_height;
-            let mut message_set = HashMap::<Vec<u8>, DepositData<Value>>::new();
+            let mut message_set = HashMap::<Vec<u8>, DepositData<FCValue>>::new();
             let cids = ret.cids();
             for cid in cids {
                 println!("cids = {:?} height={:?}", cid, height);

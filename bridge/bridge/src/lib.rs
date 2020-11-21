@@ -424,10 +424,11 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 
 			let signature:Signature = raw_payload.using_encoded(|payload|
 				{
-					let mut message = payload;
-                    if payload.len() != 32usize {
-						let message = sp_io::hashing::blake2_256(&payload[..]);
-					}
+//					let mut message = payload;
+//                    if payload.len() != 32usize {
+//						let message = sp_io::hashing::blake2_256(&payload[..]);
+//					}
+					let message = sp_io::hashing::blake2_256(&payload[..]);
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
 					let sig:Signature = match sign_by_tss(message.to_vec(),str_url,tss_gen_pubkey){
@@ -730,10 +731,19 @@ pub fn get_nonce(addr: forest_address::Address) -> u64 {
 
 pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::UnsignedMessage ,forest_cid::Cid){
 	let from_addr = forest_address::Address::new_secp256k1(&from).unwrap();
+	let to_addr = forest_address::Address::from_bytes(&to).unwrap();
 	let nonce = get_nonce(from_addr.clone());
+
+	let unsigned_msg = forest_message::UnsignedMessage::builder()
+		.to(to_addr)
+		.sequence(nonce)
+		.from(from_addr)
+		.build()
+		.unwrap();
+
 	let unsignedtx = forest_message::UnsignedMessage {
 		version: 0,
-		to: forest_address::Address::new_bls(&to).unwrap(),
+		to: to_addr,
 		from: from_addr,
     	sequence: nonce,
 		value: forest_vm::TokenAmount::from_u128(val).unwrap(),
