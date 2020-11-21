@@ -279,15 +279,16 @@ impl SignTxInput for TransactionInputSigner{
 }
 
 pub enum SignatureType{
-    FC,
+    //FC,
     BTC,
+    SECP512V1,
 }
 pub fn sign_by_tss(message: Vec<u8>, url: &str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
     let res = sign_vec(url, &message, pubkey_tss);
     if res.is_ok(){
         let (r,s,fe_r,fe_s,recid):(SecretKey,SecretKey,FE,FE,u8) = res.unwrap();
 
-        return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid, SignatureType::FC));
+        return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid, SignatureType::SECP512V1));
     }else {
         return Err("abort");
     }
@@ -313,7 +314,7 @@ fn convert_signtature(r:&FE, s:&FE, recid:u8, sigtype:SignatureType) -> Vec<u8>{
             let mut sig = secp_sig.serialize_der().as_ref().to_vec();
             sig
         },
-        SignatureType::FC => {
+        SignatureType::SECP512V1 => {
             let mut sig = secp_sig.serialize().as_ref().to_vec();
             sig.push(recid);
             return sig

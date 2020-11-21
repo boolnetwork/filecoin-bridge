@@ -4,7 +4,7 @@
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch::DispatchResult, traits::Get};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch::DispatchResult, traits::{Get,Contains}};
 use frame_system::ensure_signed;
 use frame_support::dispatch::Vec;
 use codec::{Decode, Encode};
@@ -82,6 +82,8 @@ decl_storage! {
 
         AlicePubKey get(fn alice_pubkey): Vec<u8>;
 
+        //WithDraw Address
+        WithDrawAddress get(fn with_draw_address): map hasher(blake2_128_concat) T::AccountId => Vec<u8>;
 	}
 	   add_extra_genesis {
 			config(key): Vec<u8>;
@@ -246,7 +248,7 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn deposit_token(origin, who:Vec<u8>, amount_add:u128) -> DispatchResult{
+        pub fn deposit_token(origin, who:Vec<u8>, amount_add:u128, from:Vec<u8>) -> DispatchResult{
             let sender = ensure_signed(origin)?;
 
             let dest: T::AccountId = match Decode::decode(&mut who.as_slice()) {
@@ -254,16 +256,37 @@ decl_module! {
                 Err(_e) => return Ok(()),
             };
 
-            let current_balance = <FileCoinToken<T>>::get(dest.clone());
-            <FileCoinToken<T>>::insert(dest,current_balance + amount_add);
+            let current_balance = <FileCoinToken<T>>::get(&dest);
+            <FileCoinToken<T>>::insert(&dest,current_balance + amount_add);
+
+            <WithDrawAddress<T>>::insert(&dest,from);
+
             Ok(())
         }
 
         #[weight = 0]
         pub fn withdraw_token(origin, who:T::AccountId, amount_add:u128) -> DispatchResult{
             let sender = ensure_signed(origin)?;
-            let current_balance = <FileCoinToken<T>>::get(who.clone());
-            <FileCoinToken<T>>::insert(who,current_balance - amount_add);
+
+            if <WithDrawAddress<T>>::contains_key(&who) == false{
+                return Ok(());
+            }
+
+            let from_address = <WithDrawAddress<T>>::get(&who);
+
+            let current_balance = <FileCoinToken<T>>::get(&who);
+            <FileCoinToken<T>>::insert(&who,current_balance - amount_add);
+
+            Self::deposit_event(RawEvent::WithdrawToken
+                (WithdrawDetail::<T::AccountId>{
+                    uid: 0u64,
+	                actor: who,
+	                /// token name
+	                token: vec![0u8],
+	                value: amount_add,
+	                receiver: from_address,}
+               ));
+
             Ok(())
         }
 

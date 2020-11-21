@@ -58,7 +58,7 @@ pub enum TxType {
 	Signature(Vec<u8>),
 
 	BoolDeposit(Vec<u8>,TokenType,u64), //who tokentype amount
-	FCDeposit(Vec<u8>,TokenType,u128), //who tokentype amount
+	FCDeposit(Vec<u8>,TokenType,u128, Vec<u8>), //who tokentype amount from
 
 	// TssKeyActive
 	TssKeyGenActive(Vec<u8>,Vec<u8>),
@@ -216,23 +216,10 @@ impl<A,Block,B,C> TxSender<A,Block,B,C>
 		p_nonce.nonce
 	}
 
-	fn get_nonce_bool(&self,accountid:[u8;32]) -> u64 {
-		let mut p_nonce = self.packet_nonce.lock();
+	fn get_nonce_any(&self,accountid:[u8;32]) -> u64 {
 		let info = self.client.info();
 		let at: BlockId<Block> = BlockId::Hash(info.best_hash);
-
-		if p_nonce.last_block == at {
-			p_nonce.nonce = p_nonce.nonce + 1;
-		} else {
-			p_nonce.nonce = self
-				.client
-				.runtime_api()
-				.account_nonce(&at, &accountid.into())
-				.unwrap();
-			p_nonce.last_block = at;
-		}
-
-		p_nonce.nonce
+		self.client.runtime_api().account_nonce(&at, &accountid.into()).unwrap()
 	}
 
 }
@@ -398,10 +385,11 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 		let info = self.client.info();
 		let at = BlockId::Hash(info.best_hash);
 		{
-			let nonce = self.get_nonce_bool(pubkey_blake.into());
+			let nonce = self.get_nonce_any(pubkey_blake.into());
 
 			let function = match relay_message.tx_type {
-				TxType::FCDeposit(who,_tokentype,value) => Call::Tss(TssCall::deposit_token(who,value)),
+				TxType::FCDeposit(who,_tokentype, value, from) =>
+					Call::Tss(TssCall::deposit_token(who, value, from)),
 				_ => Call::System(SystemCall::remark(vec![1u8])),
 			};
 
@@ -436,13 +424,10 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 
 			let signature:Signature = raw_payload.using_encoded(|payload|
 				{
-//					let url = self.tss_url();
-//					let str_url = core::str::from_utf8(&url).unwrap();
-//					let sig = sign_by_tss(payload.to_vec(),str_url,tss_gen_pubkey).unwrap();
-//					ecdsa::Signature::from_slice(&sig).into()
-                    println!("=========payload=============={:?}",payload.len());
-					let message = sp_io::hashing::blake2_256(&payload[..]);
-					println!("=========message=============={:?}",message.len());
+					let mut message = payload;
+                    if payload.len() != 32usize {
+						let message = sp_io::hashing::blake2_256(&payload[..]);
+					}
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
 					let sig:Signature = match sign_by_tss(message.to_vec(),str_url,tss_gen_pubkey){
@@ -459,9 +444,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 			let extrinsic =
 				UncheckedExtrinsic::new_signed(function, local_id.into(), signature.into(), extra);
 			let xt: TransactionFor<A> = Decode::decode(&mut &extrinsic.encode()[..]).unwrap();
-			debug!(target:"witness", "extrinsic {:?}", xt);
 			let source = sp_runtime::transaction_validity::TransactionSource::External;
-			//let result = block_on(self.tx_pool.submit_one(&at, source, xt));
 			let result2 = self.tx_pool.submit_one(&at, source, xt);
 			std::thread::spawn(|| {
 				let mut rt = tokio::runtime::Runtime::new().unwrap();
@@ -615,7 +598,8 @@ impl <V,B>TssSender<V,B>
 			message:message,
 			signature:forest_crypto::Signature::new_secp256k1(sig),
 		};
-		let _cid = send_fc_message(signed_message);
+		let cid = send_fc_message(signed_message);
+		println!("withdraw fc result ----------> {:?}",cid);
 	}
 
 	fn get_stream(&self, events_key:StorageKey) -> StorageEventStream<B::Hash> {
