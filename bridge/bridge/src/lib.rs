@@ -587,7 +587,7 @@ impl <V,B>TssSender<V,B>
 
 	fn withdraw_fc(&self, withdrawdetail:&WithdrawDetail<AccountId>){
 		let url = self.spv.tss_url();
-		let pubkey = self.spv.tss_pubkey_fc();
+		let pubkey = self.spv.tss_pubkey();
 		let (message,cid) = message_create(
 			pubkey.clone(),
 			withdrawdetail.receiver.clone(),
