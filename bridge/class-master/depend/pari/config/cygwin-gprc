@@ -1,3 +1,0 @@
-help = "perl.exe gphelp -cu 6"
-prettyprinter = "perl.exe tex2mail -TeX -noindent -ragged -by_par"
-prompt = "(%H:%M) gp > "

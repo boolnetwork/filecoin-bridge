@@ -1,5 +1,0 @@
-Function: _===_
-Help: x===y: return 1 if x and y are identical, 0 otherwise.
-Section: symbolic_operators
-C-Name: gidentical
-Prototype: iGG

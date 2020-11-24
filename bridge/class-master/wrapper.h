@@ -1,2 +1,0 @@
-
-#include <pari/pari.h>

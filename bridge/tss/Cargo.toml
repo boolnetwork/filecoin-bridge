@@ -39,8 +39,10 @@ git = "https://github.com/KZen-networks/centipede"
 tag = "v0.2.2"
 
 [dependencies.class_group]
-path = "../class-master"
-tag = "v0.4.18"
+#path = "../class-master"
+git = "https://github.com/boolnetwork/class"
+version = "0.4.18"
+branch = "filecoin-bridge"
 optional = true
 
 [dependencies.multi-party-ecdsa]

@@ -1,4 +1,0 @@
-Function: _gc_needed
-Class: gp2c_internal
-Description:
- (pari_sp):bool                gc_needed($1, 1)

@@ -1,2 +1,0 @@
-default(parisize, 2^20);
-vector(100000, k, k);        \\ #1881

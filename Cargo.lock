@@ -531,12 +531,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
-name = "az"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9bcd47d94aa4eb8c076b50fc61a75020789394ffb9bd74a180b3379130f6569"
-
-[[package]]
 name = "backtrace"
 version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1315,16 +1309,14 @@ dependencies = [
 [[package]]
 name = "class_group"
 version = "0.4.18"
+source = "git+https://github.com/boolnetwork/class?branch=filecoin-bridge#9cf4b9f63fa6964a0b9bb951f16c12b197304a94"
 dependencies = [
  "bindgen",
- "criterion",
  "curv 0.2.6",
  "libc",
- "rug",
  "serde",
  "serde_derive",
  "serde_json",
- "sha2 0.9.1",
 ]
 
 [[package]]
@@ -3727,16 +3719,6 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "gmp-mpfr-sys"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad4e8e85ec9fb902b4564deeb17b1a263d3ba1334bef56154418aa045b159508"
-dependencies = [
- "libc",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -8392,17 +8374,6 @@ dependencies = [
  "state_manager",
  "state_tree",
  "thiserror",
-]
-
-[[package]]
-name = "rug"
-version = "1.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e538d00da450a8e48aac7e6322e67b2dc86ec71a1feeac0e3954c4f07f01bc45"
-dependencies = [
- "az",
- "gmp-mpfr-sys",
- "libc",
 ]
 
 [[package]]
