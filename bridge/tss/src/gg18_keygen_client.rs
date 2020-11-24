@@ -23,8 +23,11 @@ use crate::common::{aes_decrypt, aes_encrypt, broadcast, poll_for_broadcasts
 use crate::common::{save_url, save, init};
 
 use secp256k1::{ PublicKey, PublicKeyFormat };
+pub use anyhow::Result;
+use crate::tsserror::TssError;
 
-pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),&'a str>{
+//pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),&'a str>{
+pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>)>{
 
     println!("============ key_gen Event!key_gen Event!key_gen Event! ============");
     println!("============ key_gen Event url = {:?} ============",url);
@@ -46,7 +49,9 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
     //signup:
     let (party_num_int, uuid) = match signup(&client) {
         Ok(PartySignup { number, uuid }) => (number, uuid),
-        Err(_) => {  println!("========signup failed=========="); return Err("error"); },
+        Err(_) => {
+            return Err(TssError::KeyGenError(0).into());
+        },
     };
 
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
@@ -55,14 +60,14 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
     let (bc_i, decom_i) = party_keys.phase1_broadcast_phase3_proof_of_correct_key();
 
     // send commitment to ephemeral public keys, get round 1 commitments of other parties
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round1",
         serde_json::to_string(&bc_i).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
+
     let round1_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -70,7 +75,7 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
         delay,
         "round1",
         uuid.clone(),
-    );
+    )?;
 
     let mut bc1_vec = round1_ans_vec
         .iter()
@@ -80,14 +85,15 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
     bc1_vec.insert(party_num_int as usize - 1, bc_i);
 
     // send ephemeral public keys and check commitments correctness
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round2",
         serde_json::to_string(&decom_i).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
+
+
     let round2_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -95,7 +101,7 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
         delay,
         "round2",
         uuid.clone(),
-    );
+    )?;
 
     let mut j = 0;
     let mut point_vec: Vec<GE> = Vec::new();
@@ -132,15 +138,14 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
             let key_i = BigInt::to_vec(&enc_keys[j]);
             let plaintext = BigInt::to_vec(&secret_shares[k].to_big_int());
             let aead_pack_i = aes_encrypt(&key_i, &plaintext);
-            assert!(sendp2p(
+            sendp2p(
                 &client,
                 party_num_int,
                 i,
                 "round3",
                 serde_json::to_string(&aead_pack_i).unwrap(),
                 uuid.clone()
-            )
-            .is_ok());
+            )?;
             j += 1;
         }
     }
@@ -172,14 +177,14 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
     }
 
     // round 4: send vss commitments
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round4",
         serde_json::to_string(&vss_scheme).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
+
     let round4_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -187,7 +192,7 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
         delay,
         "round4",
         uuid.clone(),
-    );
+    )?;
 
     let mut j = 0;
     let mut vss_scheme_vec: Vec<VerifiableSS> = Vec::new();
@@ -212,14 +217,14 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
         .expect("invalid vss");
 
     // round 5: send dlog proof
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round5",
         serde_json::to_string(&dlog_proof).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
+
     let round5_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -227,7 +232,7 @@ pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),
         delay,
         "round5",
         uuid.clone(),
-    );
+    )?;
 
     let mut j = 0;
     let mut dlog_proof_vec: Vec<DLogProof> = Vec::new();

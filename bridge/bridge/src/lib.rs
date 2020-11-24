@@ -424,16 +424,19 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
 
 			let signature:Signature = raw_payload.using_encoded(|payload|
 				{
-//					let mut message = payload;
-//                    if payload.len() != 32usize {
-//						let message = sp_io::hashing::blake2_256(&payload[..]);
-//					}
 					let message = sp_io::hashing::blake2_256(&payload[..]);
 					let url = self.tss_url();
 					let str_url = core::str::from_utf8(&url).unwrap();
 					let sig:Signature = match sign_by_tss(message.to_vec(),str_url,tss_gen_pubkey){
 						Ok(sig) => { ecdsa::Signature::from_slice(&sig).into() },
-						Err(_) => { ecdsa::Signature::default().into() },
+						Err(e) => {
+							match e{
+								"Retry" => {},
+								"SignUp" => {},
+								_ => {},
+							}
+							ecdsa::Signature::default().into()
+						},
 					};
 					sig
 				});
@@ -582,7 +585,7 @@ impl <V,B>TssSender<V,B>
 				   }
 				}
 	        }
-		Some(vec![0u8])
+		Some(vec![0u8]) // None?
 	}
 
 	fn withdraw_fc(&self, withdrawdetail:&WithdrawDetail<AccountId>){
@@ -637,7 +640,6 @@ impl <V,B>TssSender<V,B>
 								},
 								RawEvent::GenerateTssKey(url, store) => {
 									self.key_gen(url.to_vec(), store.to_vec());
-									//self.submit_tx_ecdsa();
 								},
 								RawEvent::GenerateTssKeyBool(url, store) => {
 									self.key_gen_bool(url.to_vec(), store.to_vec());

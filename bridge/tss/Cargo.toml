@@ -55,5 +55,11 @@ git = "https://github.com/KZen-networks/rust-gmp"
 version = "0.5.0"
 features = ["serde_support"]
 
+[dependencies.anyhow]
+version = "1.0.23"
+
+[dependencies.thiserror]
+version = "1.0.4"
+
 #[patch.crates-io]
 #rust-gmp = { version = "0.5.0", features = ["serde_support"], git = "https://github.com/KZen-networks/rust-gmp" }

@@ -25,6 +25,8 @@ use crate::common::{
 
 use crate::common::{save_url,find_store, init};
 use bitcrypto::ripemd160;
+pub use anyhow::Result;
+use crate::tsserror::TssError;
 
 pub fn sign_btc_tx(_url:&str, _message:&str) {
 
@@ -33,11 +35,22 @@ pub fn sign_btc_tx(_url:&str, _message:&str) {
 
 pub fn sign_vec(url:&str, message:&Vec<u8>, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&'static str> {
     let message_str = hex::encode(message);
-    sign(url,&message_str, pubkey)
+    match sign(url,&message_str, pubkey){
+        Ok(res) => return Ok(res),
+        Err(x) => {
+            if let Some(e) = x.downcast_ref::<TssError>(){
+                match e {
+                    TssError::SignUp() => return Err("SignUp"),
+                    _ => return Err("Retry"),
+                }
+            }
+            return Err("");
+        },
+    }
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&'static str> {
+pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8)> {
 
     save_url(String::from(url));
     init();
@@ -81,19 +94,18 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
 
     let (party_num_int, uuid) = match signup(&client,Message{ key:ripemd160(message).to_string()}){
         Ok(PartySignup { number, uuid }) => (number, uuid),
-        Err(_) =>  { return Err("error"); },
+        Err(_) =>  { return Err(TssError::SignUp().into()) },
     };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
 
     // round 0: collect signers IDs
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round0",
         serde_json::to_string(&party_id).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round0_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -101,7 +113,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round0",
         uuid.clone(),
-    );
+    )?;
 
     let mut j = 0;
     let mut signers_vec: Vec<usize> = Vec::new();
@@ -128,14 +140,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
     //////////////////////////////////////////////////////////////////////////////
     let (com, decommit) = sign_keys.phase1_broadcast();
     let (m_a_k, _) = MessageA::a(&sign_keys.k_i, &party_keys.ek);
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round1",
         serde_json::to_string(&(com.clone(), m_a_k.clone())).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round1_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -143,7 +154,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round1",
         uuid.clone(),
-    );
+    )?;
 
     let mut j = 0;
     let mut bc1_vec: Vec<SignBroadcastPhase1> = Vec::new();
@@ -198,7 +209,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
     let mut j = 0;
     for i in 1..THRESHOLD + 2 {
         if i != party_num_int {
-            assert!(sendp2p(
+            sendp2p(
                 &client,
                 party_num_int,
                 i,
@@ -206,8 +217,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
                 serde_json::to_string(&(m_b_gamma_send_vec[j].clone(), m_b_w_send_vec[j].clone()))
                     .unwrap(),
                 uuid.clone()
-            )
-            .is_ok());
+            )?;
             j += 1;
         }
     }
@@ -264,14 +274,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
     let delta_i = sign_keys.phase2_delta_i(&alpha_vec[..], &beta_vec);
     let sigma = sign_keys.phase2_sigma_i(&miu_vec[..], &ni_vec);
 
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round3",
         serde_json::to_string(&delta_i).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round3_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -279,7 +288,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round3",
         uuid.clone(),
-    );
+    )?;
     let mut delta_vec: Vec<FE> = Vec::new();
     format_vec_from_reads(
         &round3_ans_vec,
@@ -291,14 +300,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
 
     //////////////////////////////////////////////////////////////////////////////
     // decommit to gamma_i
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round4",
         serde_json::to_string(&decommit).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round4_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -306,7 +314,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round4",
         uuid.clone(),
-    );
+    )?;
 
     let mut decommit_vec: Vec<SignDecommitPhase1> = Vec::new();
     format_vec_from_reads(
@@ -335,14 +343,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         local_sig.phase5a_broadcast_5b_zkproof();
 
     //phase (5A)  broadcast commit
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round5",
         serde_json::to_string(&phase5_com).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round5_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -350,7 +357,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round5",
         uuid.clone(),
-    );
+    )?;
 
     let mut commit5a_vec: Vec<Phase5Com1> = Vec::new();
     format_vec_from_reads(
@@ -361,7 +368,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
     );
 
     //phase (5B)  broadcast decommit and (5B) ZK proof
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round6",
@@ -372,8 +379,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         ))
         .unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round6_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -381,7 +387,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round6",
         uuid.clone(),
-    );
+    )?;
 
     let mut decommit5a_and_elgamal_and_dlog_vec: Vec<(Phase5ADecom1, HomoELGamalProof, DLogProof)> =
         Vec::new();
@@ -420,14 +426,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         .expect("error phase5");
 
     //////////////////////////////////////////////////////////////////////////////
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round7",
         serde_json::to_string(&phase5_com2).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round7_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -435,7 +440,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round7",
         uuid.clone(),
-    );
+    )?;
 
     let mut commit5c_vec: Vec<Phase5Com2> = Vec::new();
     format_vec_from_reads(
@@ -446,14 +451,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
     );
 
     //phase (5B)  broadcast decommit and (5B) ZK proof
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round8",
         serde_json::to_string(&phase_5d_decom2).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round8_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -461,7 +465,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round8",
         uuid.clone(),
-    );
+    )?;
 
     let mut decommit5d_vec: Vec<Phase5DDecom2> = Vec::new();
     format_vec_from_reads(
@@ -487,14 +491,13 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         .expect("bad com 5d");
 
     //////////////////////////////////////////////////////////////////////////////
-    assert!(broadcast(
+    broadcast(
         &client,
         party_num_int,
         "round9",
         serde_json::to_string(&s_i).unwrap(),
         uuid.clone()
-    )
-    .is_ok());
+    )?;
     let round9_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -502,7 +505,7 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&
         delay,
         "round9",
         uuid.clone(),
-    );
+    )?;
 
     let mut s_i_vec: Vec<FE> = Vec::new();
     format_vec_from_reads(&round9_ans_vec, party_num_int as usize, s_i, &mut s_i_vec);

@@ -21,6 +21,9 @@ use rustbreak::{FileDatabase, deser::Ron};
 
 pub type Key = String;
 
+pub use anyhow::Result;
+use crate::tsserror::TssError;
+
 //use std::ops::DerefMut;
 //
 //impl DerefMut for Url {
@@ -185,6 +188,7 @@ pub fn aes_decrypt(key: &[u8], aead_pack: AEAD) -> Vec<u8> {
     out
 }
 
+
 pub fn postb<T>(client: &Client, path: &str, body: T) -> Option<String>
 where
     T: serde::ser::Serialize,
@@ -210,21 +214,34 @@ where
     None
 }
 
+//    let res_body = postb(&client, "set", entry).unwrap();
+//    serde_json::from_str(&res_body).unwrap()
 pub fn broadcast(
     client: &Client,
     party_num: u16,
     round: &str,
     data: String,
     sender_uuid: String,
-) -> Result<(), ()> {
+) -> Result<()> {
     let key = format!("{}-{}-{}", party_num, round, sender_uuid);
     let entry = Entry {
         key: key.clone(),
         value: data,
     };
 
-    let res_body = postb(&client, "set", entry).unwrap();
-    serde_json::from_str(&res_body).unwrap()
+    if let Some(res_body) = postb(&client, "set", entry){
+          let serde_res: serde_json::error::Result<core::result::Result<(), ()>> = serde_json::from_str(&res_body);
+          match serde_res {
+              Ok(res) => {
+                  match res{
+                      Ok(_) => return Ok(()),
+                      _ => return Err(TssError::CommonError("broadcast postdata error".into()).into())
+                  }
+              },
+              _ => return Err(TssError::CommonError("broadcast serde error".into()).into()),
+          }
+    }
+    return Err(TssError::CommonError("broadcast postb error".into()).into());
 }
 
 pub fn sendp2p(
@@ -234,7 +251,7 @@ pub fn sendp2p(
     round: &str,
     data: String,
     sender_uuid: String,
-) -> Result<(), ()> {
+) -> Result<()> {
     let key = format!("{}-{}-{}-{}", party_from, party_to, round, sender_uuid);
 
     let entry = Entry {
@@ -242,10 +259,23 @@ pub fn sendp2p(
         value: data,
     };
 
-    let res_body = postb(&client, "set", entry).unwrap();
-    serde_json::from_str(&res_body).unwrap()
+    if let Some(res_body) = postb(&client, "set", entry){
+        let serde_res: serde_json::error::Result<core::result::Result<(), ()>> = serde_json::from_str(&res_body);
+        match serde_res {
+            Ok(res) => {
+                match res{
+                    Ok(_) => return Ok(()),
+                    _ => return Err(TssError::CommonError("sendp2p postdata error".into()).into())
+                }
+            },
+            _ => return Err(TssError::CommonError("sendp2p serde error".into()).into()),
+        }
+    }
+    return Err(TssError::CommonError("sendp2p postb error".into()).into());
 }
 
+//let res_body = postb(client, "get", index.clone()).unwrap();
+//let answer: Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
 pub fn poll_for_broadcasts(
     client: &Client,
     party_num: u16,
@@ -253,26 +283,37 @@ pub fn poll_for_broadcasts(
     delay: Duration,
     round: &str,
     sender_uuid: String,
-) -> Vec<String> {
+) -> Result<Vec<String>> {
     let mut ans_vec = Vec::new();
     for i in 1..=n {
+        let mut retry = 0u64;
+        let mut error_flag = false;
         if i != party_num {
             let key = format!("{}-{}-{}", i, round, sender_uuid);
             let index = Index { key };
             loop {
                 // add delay to allow the server to process request:
                 thread::sleep(delay);
-                let res_body = postb(client, "get", index.clone()).unwrap();
-                let answer: Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
-                if let Ok(answer) = answer {
-                    ans_vec.push(answer.value);
-                    println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
+                if let Some(res_body)  = postb(client, "get", index.clone()){
+                    let answer: core::result::Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
+                    if let Ok(answer) = answer {
+                        ans_vec.push(answer.value);
+                        println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
+                        break;
+                    }
+                }
+                if retry >= 6{
+                    error_flag = true;
                     break;
                 }
+                retry = retry + 1;
             }
         }
+        if error_flag == true{
+            return Err(TssError::CommonError("poll_for_broadcasts error".into()).into());
+        }
     }
-    ans_vec
+    Ok(ans_vec)
 }
 
 pub fn poll_for_p2p(
@@ -290,13 +331,13 @@ pub fn poll_for_p2p(
             let index = Index { key };
             loop {
                 // add delay to allow the server to process request:
-                thread::sleep(delay);
-                let res_body = postb(client, "get", index.clone()).unwrap();
-                let answer: Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
-                if let Ok(answer) = answer {
-                    ans_vec.push(answer.value);
-                    println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
-                    break;
+                if let Some(res_body)  = postb(client, "get", index.clone()){
+                    let answer: core::result::Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
+                    if let Ok(answer) = answer {
+                        ans_vec.push(answer.value);
+                        println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
+                        break;
+                    }
                 }
             }
         }
@@ -307,35 +348,29 @@ pub fn poll_for_p2p(
 #[allow(dead_code)]
 pub fn check_sig(r: &FE, s: &FE, msg: &BigInt, pk: &GE) {
     use secp256k1::{verify, Message, PublicKey, PublicKeyFormat, Signature};
-    println!("check_sig 1");
     let raw_msg = BigInt::to_vec(&msg);
     println!("check_sig 1 1 raw_msg {:?}",raw_msg.len());
     let mut msg: Vec<u8> = Vec::new(); // padding
-    println!("check_sig 1 2");
     msg.extend(vec![0u8; 32 - raw_msg.len()]);
-    println!("check_sig 1 3");
     msg.extend(raw_msg.iter());
-    println!("check_sig 2");
     let msg = Message::parse_slice(msg.as_slice()).unwrap();
     let mut raw_pk = pk.pk_to_key_slice();
     if raw_pk.len() == 64 {
         raw_pk.insert(0, 4u8);
     }
-    println!("check_sig 3");
     let pk = PublicKey::parse_slice(&raw_pk, Some(PublicKeyFormat::Full)).unwrap();
-    println!("check_sig 4");
 
     let mut compact: Vec<u8> = Vec::new();
     let bytes_r = &r.get_element()[..];
     compact.extend(vec![0u8; 32 - bytes_r.len()]);
     compact.extend(bytes_r.iter());
-    println!("check_sig 5");
+
     let bytes_s = &s.get_element()[..];
     compact.extend(vec![0u8; 32 - bytes_s.len()]);
     compact.extend(bytes_s.iter());
-    println!("check_sig 6");
+
     let secp_sig = Signature::parse_slice(compact.as_slice()).unwrap();
-    println!("check_sig 7");
+
     let is_correct = verify(&msg, &secp_sig, &pk);
     assert!(is_correct);
 }

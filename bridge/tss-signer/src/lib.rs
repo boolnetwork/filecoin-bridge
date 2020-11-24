@@ -29,6 +29,11 @@ use curv::elliptic::curves::traits::ECScalar;
 
 use log::{debug, info};
 
+pub enum SignatureType{
+    BTC,
+    SECP512V1,
+}
+
 lazy_static!{
     pub static ref PUBKEY_STORE: Mutex<HashMap<&'static str,Vec<u8>>> = Mutex::new(HashMap::default());
     pub static ref STORE_LIST: Mutex<Vec<&'static str>> =  Mutex::new(vec!["test"]);
@@ -268,29 +273,26 @@ impl SignTxInput for TransactionInputSigner{
 
     fn sign_by_tss(&self, message:Vec<u8>, url:&str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
         let res = sign_vec(url, &message,pubkey_tss);
-        if res.is_ok(){
-            let (r,s,fe_r,fe_s,recid):(SecretKey,SecretKey,FE,FE,u8) = res.unwrap();
-            return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid,SignatureType::BTC));
-        }else {
-            return Err("abort");
+        match res{
+            Ok((r,s,fe_r,fe_s,recid))=>{
+                return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid,SignatureType::BTC));
+            },
+            Err(x) => {
+                return Err(x);
+            },
         }
     }
-
 }
 
-pub enum SignatureType{
-    //FC,
-    BTC,
-    SECP512V1,
-}
 pub fn sign_by_tss(message: Vec<u8>, url: &str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
     let res = sign_vec(url, &message, pubkey_tss);
-    if res.is_ok(){
-        let (r,s,fe_r,fe_s,recid):(SecretKey,SecretKey,FE,FE,u8) = res.unwrap();
-
-        return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid, SignatureType::SECP512V1));
-    }else {
-        return Err("abort");
+    match res{
+        Ok((r,s,fe_r,fe_s,recid))=>{
+            return Ok(r_s_to_vec(r,s,&fe_r,&fe_s, recid,SignatureType::SECP512V1));
+        },
+        Err(x) => {
+            return Err(x);
+        },
     }
 }
 

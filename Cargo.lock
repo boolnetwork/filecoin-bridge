@@ -6316,6 +6316,7 @@ dependencies = [
 name = "node-tss"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "bitcrypto",
  "centipede 0.2.2",
  "class_group",
@@ -6337,6 +6338,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle 2.3.0",
+ "thiserror",
  "uuid 0.8.1",
  "zeroize 0.10.1",
  "zk-paillier 0.2.5",
