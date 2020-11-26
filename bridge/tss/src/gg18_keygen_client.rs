@@ -24,7 +24,7 @@ use crate::common::{save_url, save, init};
 
 use secp256k1::{ PublicKey, PublicKeyFormat };
 pub use anyhow::Result;
-use crate::tsserror::TssError;
+use bridge_primitives::TssError;
 
 //pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>),&'a str>{
 pub fn key_gen<'a>(url:&'a str, store:&'a str) -> Result<([u8;65],Vec<Vec<u8>>)>{

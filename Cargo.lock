@@ -916,6 +916,7 @@ name = "bridge"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "bridge-primitives",
  "derive_more",
  "filecoin-bridge-runtime",
  "forest_address",
@@ -966,6 +967,14 @@ dependencies = [
  "sp-version 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.22",
  "tss-signer",
+]
+
+[[package]]
+name = "bridge-primitives"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "thiserror",
 ]
 
 [[package]]
@@ -6300,6 +6309,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "bitcrypto",
+ "bridge-primitives",
  "centipede 0.2.2",
  "class_group",
  "criterion",
@@ -12141,6 +12151,7 @@ dependencies = [
 name = "tss-signer"
 version = "2.0.0"
 dependencies = [
+ "anyhow",
  "base58",
  "bit-vec 0.5.0",
  "bitcrypto",

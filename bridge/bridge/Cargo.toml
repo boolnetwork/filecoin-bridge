@@ -65,3 +65,7 @@ forest_encoding = { git = "https://github.com/prz23/forest-no-submodule" ,  bran
 forest_crypto = { git = "https://github.com/prz23/forest-no-submodule" ,  branch="main" }
 #subkey = { version = "2.0.0",git = "https://github.com/paritytech/substrate.git"}
 async-trait = "0.1.38"
+
+[dependencies.bridge-primitives]
+version = "0.0.1"
+path = "../primitives"

@@ -28,6 +28,7 @@ use curv::FE;
 use curv::elliptic::curves::traits::ECScalar;
 
 use log::{debug, info};
+use anyhow::Result;
 
 pub enum SignatureType{
     BTC,
@@ -227,7 +228,7 @@ trait SignTxInput {
                        pubkey_tss:Vec<u8>,
                        url:&str) -> Result<TransactionInput,&'static str>;
 
-    fn sign_by_tss(&self, message:Vec<u8>,url:&str,pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>;
+    fn sign_by_tss(&self, message:Vec<u8>,url:&str,pubkey_tss:Vec<u8>) -> Result<Vec<u8>>;
 }
 
 impl SignTxInput for TransactionInputSigner{
@@ -271,7 +272,7 @@ impl SignTxInput for TransactionInputSigner{
         })
     }
 
-    fn sign_by_tss(&self, message:Vec<u8>, url:&str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
+    fn sign_by_tss(&self, message:Vec<u8>, url:&str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>>{
         let res = sign_vec(url, &message,pubkey_tss);
         match res{
             Ok((r,s,fe_r,fe_s,recid))=>{
@@ -284,7 +285,7 @@ impl SignTxInput for TransactionInputSigner{
     }
 }
 
-pub fn sign_by_tss(message: Vec<u8>, url: &str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>,&'static str>{
+pub fn sign_by_tss(message: Vec<u8>, url: &str, pubkey_tss:Vec<u8>) -> Result<Vec<u8>>{
     let res = sign_vec(url, &message, pubkey_tss);
     match res{
         Ok((r,s,fe_r,fe_s,recid))=>{

@@ -1,0 +1,12 @@
+[package]
+name = "bridge-primitives"
+version = "0.0.1"
+authors = ["prz"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies.anyhow]
+version = "1.0.23"
+
+[dependencies.thiserror]
+version = "1.0.4"

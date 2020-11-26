@@ -39,7 +39,6 @@ git = "https://github.com/KZen-networks/centipede"
 tag = "v0.2.2"
 
 [dependencies.class_group]
-#path = "../class-master"
 git = "https://github.com/boolnetwork/class"
 version = "0.4.18"
 branch = "filecoin-bridge"
@@ -62,6 +61,11 @@ version = "1.0.23"
 
 [dependencies.thiserror]
 version = "1.0.4"
+
+[dependencies.bridge-primitives]
+version = "0.0.1"
+path = "../primitives"
+
 
 #[patch.crates-io]
 #rust-gmp = { version = "0.5.0", features = ["serde_support"], git = "https://github.com/KZen-networks/rust-gmp" }

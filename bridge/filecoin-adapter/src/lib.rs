@@ -45,6 +45,23 @@ type MessageStreamS<V> = mpsc::UnboundedSender<StreamData<V>>;
 type DepositData<V> = (SubTargetAccountId, V, FCFromAddress);
 type ExtractMessage<V> = (FCMessageCidBytes, Address, SubTargetAccountId, V, FCFromAddress);
 
+fn extract_message(message: UnsignedMessage) -> ExtractMessage<FCValue> {
+
+    let revice_address = message.to.clone();
+    let from_address = message.from.to_bytes();
+    let deposit_boolid = message.params.bytes().to_vec();
+    let deposit_amount = message.value.clone().to_u128().unwrap();
+    let cid = message.cid().unwrap().to_bytes();
+    println!("extract_message deposit_boolid={:?} deposit_amount={:?}",deposit_boolid,deposit_amount);
+
+    (cid, revice_address, deposit_boolid, deposit_amount, from_address)
+}
+
+pub fn get_fc_message_parse_channel() -> (MessageStreamS<FCValue>, MessageStreamR<FCValue>) {
+    let (sender, reciver) = mpsc::unbounded::<(Vec<u8>, FCValue, Vec<u8>)>();
+    (sender, reciver)
+}
+
 #[derive(Debug)]
 pub struct FCMessageForward<V, B> {
     pub spv: Arc<V>,
@@ -138,23 +155,6 @@ where
     fc_message_forward.start_sign_push_fc_message()
 }
 
-fn extract_message(message: UnsignedMessage) -> ExtractMessage<FCValue> {
-
-    let revice_address = message.to.clone();
-    let from_address = message.from.to_bytes();
-    let deposit_boolid = message.params.bytes().to_vec();
-    let deposit_amount = message.value.clone().to_u128().unwrap();
-    let cid = message.cid().unwrap().to_bytes();
-    println!("extract_message deposit_boolid={:?} deposit_amount={:?}",deposit_boolid,deposit_amount);
-
-    (cid, revice_address, deposit_boolid, deposit_amount, from_address)
-}
-
-pub fn get_fc_message_parse_channel() -> (MessageStreamS<FCValue>, MessageStreamR<FCValue>) {
-    let (sender, reciver) = mpsc::unbounded::<(Vec<u8>, FCValue, Vec<u8>)>();
-    (sender, reciver)
-}
-
 pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciver: FcPubkeySender, state: ChainState<Block,B,C>)
     where
         Block: BlockT,
@@ -170,7 +170,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciv
         loop {
             thread::sleep(time::Duration::new(10, 0));
             let pubkey = state.tss_pubkey();
-            if pubkey.len() == 0{
+            if pubkey.len() == 0 || pubkey.len() != 65{
                 continue;
             }else{
                 recv_addr = pubkey;
@@ -195,12 +195,10 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciv
             let mut message_set = HashMap::<Vec<u8>, DepositData<FCValue>>::new();
             let cids = ret.cids();
             for cid in cids {
-                println!("cids = {:?} height={:?}", cid, height);
+                println!("[filecoin block] cids = {:?} height={:?}", cid, height);
                 let block_messages: forest_BlockMessages =
                     rt.block_on(http.chain_get_block_messages(&cid)).unwrap();
                 let signed_bls_messages = block_messages.bls_msg.clone();
-                println!("signed_bls_messages = {:?}", signed_bls_messages.len());
-
                 for message in signed_bls_messages {
                     let (cid, revice_addr, who, val, from) = extract_message(message.clone());
                     if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {

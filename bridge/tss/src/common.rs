@@ -22,7 +22,7 @@ use rustbreak::{FileDatabase, deser::Ron};
 pub type Key = String;
 
 pub use anyhow::Result;
-use crate::tsserror::TssError;
+use bridge_primitives::TssError;
 
 //use std::ops::DerefMut;
 //

@@ -1,4 +1,5 @@
-pub use anyhow::Result;
+use anyhow::Result;
+use anyhow::Error;
 use std::any::Any;
 
 #[derive(Debug, thiserror::Error)]
@@ -19,7 +20,6 @@ impl From<Box<dyn Any + Send>> for TssError {
     }
 }
 
-pub enum RetryAbort{
-    Retry,
-    Abort,
+pub fn tss_error(x:Error) -> TssError{
+    x.downcast::<TssError>().unwrap()
 }

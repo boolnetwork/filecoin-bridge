@@ -26,27 +26,14 @@ use crate::common::{
 use crate::common::{save_url,find_store, init};
 use bitcrypto::ripemd160;
 pub use anyhow::Result;
-use crate::tsserror::TssError;
+use bridge_primitives::TssError;
 
 pub fn sign_btc_tx(_url:&str, _message:&str) {
-
-
 }
 
-pub fn sign_vec(url:&str, message:&Vec<u8>, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8),&'static str> {
+pub fn sign_vec(url:&str, message:&Vec<u8>, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8)> {
     let message_str = hex::encode(message);
-    match sign(url,&message_str, pubkey){
-        Ok(res) => return Ok(res),
-        Err(x) => {
-            if let Some(e) = x.downcast_ref::<TssError>(){
-                match e {
-                    TssError::SignUp() => return Err("SignUp"),
-                    _ => return Err("Retry"),
-                }
-            }
-            return Err("");
-        },
-    }
+    sign(url,&message_str, pubkey)
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -89,8 +76,6 @@ pub fn sign(url:&str, message:&str, pubkey:Vec<u8>) -> Result<(SK,SK,FE,FE,u8)> 
 //            return Err("error");
 //        },
 //    }
-
-    println!("aaaaaaaaaaaaaaaaaa");
 
     let (party_num_int, uuid) = match signup(&client,Message{ key:ripemd160(message).to_string()}){
         Ok(PartySignup { number, uuid }) => (number, uuid),

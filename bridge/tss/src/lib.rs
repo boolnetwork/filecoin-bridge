@@ -9,8 +9,6 @@ use uuid::Uuid;
 mod common;
 use common::{Entry, Index, Key, PartySignup, Message};
 
-mod tsserror;
-
 #[macro_use]
 extern crate lazy_static;
 
