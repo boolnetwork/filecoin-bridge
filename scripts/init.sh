@@ -9,4 +9,7 @@ if [ -z $CI_PROJECT_NAME ] ; then
    rustup update stable
 fi
 
+# Installation dependency of filecoin
+sudo apt install hwloc libhwloc-dev
+
 rustup target add wasm32-unknown-unknown --toolchain nightly
