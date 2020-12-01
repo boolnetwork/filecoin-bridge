@@ -25,6 +25,8 @@ use node_tss::{start_sm_manager, key_gen, push};
 use bridge_primitives::{TssError,tss_error};
 use async_trait::async_trait;
 
+use crate::recover::recover;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     FC,
@@ -383,7 +385,7 @@ impl<A,Block,B,C> SuperviseClient<Block> for TxSender<A,Block,B,C>
                         Err(e) => {
                             match tss_error(e){
                                 TssError::SignUp() => {}, // do nothing
-                                _ => {    }, // retry
+                                _ => {  recover();  }, // retry
                             }
                             ecdsa::Signature::default().into()
                         },

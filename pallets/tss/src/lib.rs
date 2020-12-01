@@ -12,7 +12,9 @@ use pallet_timestamp;
 use frame_system::ensure_root;
 
 use sp_std::{ prelude::*, marker::PhantomData};
-use frame_support::sp_runtime::RuntimeDebug;
+use frame_support::sp_runtime::{RuntimeDebug,
+								offchain::{http, Duration, storage::StorageValueRef},};
+use lite_json;
 
 #[cfg(test)]
 mod mock;
@@ -40,6 +42,38 @@ pub struct WithdrawDetail<AccountId> {
 	pub token: Vec<u8>,
 	pub value: u128,
 	pub receiver: Vec<u8>,
+}
+
+#[derive(Default, PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub struct ErrorRecord{
+	pub cid: Vec<u8>,
+	pub from: Vec<u8>,
+	pub tovec: Vec<u8>,
+	pub amount: u128,
+	pub solved: bool,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub enum PendingStatus{
+    Pending,
+	Deposit,
+	Fork,
+	Error,
+}
+
+impl Default for PendingStatus {
+	fn default() -> PendingStatus{
+		PendingStatus::Pending
+	}
+}
+
+#[derive(Default, PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+pub struct InPendingDepost{
+	pub cid: Vec<u8>,  // cid of the block
+	pub from: Vec<u8>, // sender's Address of filecoin
+	pub tovec: Vec<u8>, // bytes of the AccountId of Substrate
+	pub amount: u128, // amount of token
+	pub state: PendingStatus, // state of the deposit request
 }
 
 pub struct LinkedNodes<T: Trait>(PhantomData<T>);
@@ -84,13 +118,17 @@ decl_storage! {
 
         //WithDraw Address
         WithDrawAddress get(fn with_draw_address): map hasher(blake2_128_concat) T::AccountId => Vec<u8>;
+
+        //Error Record
+        FailRecord get(fn fail_record): map hasher(blake2_128_concat) Vec<u8> => ErrorRecord;
+
+        //InPendingList  block height => Vec< { } >
+        InPendingList get(fn in_pending_list): map hasher(blake2_128_concat) u64 => Vec<InPendingDepost>;
+
 	}
 	   add_extra_genesis {
 			config(key): Vec<u8>;
 		    build(|config| {
-		        //let keys = key.as_bytes();
-		        //let encoded:Vec<u8> = T::AccountId::encode(&mut config.key);
-		        //let key:AccountId32 = T::AccountId::decode(&mut &encoded[..]).unwrap();
 		        Module::<T>::initialize_key(&config.key);
 		        Module::<T>::initialize_url();
 		    })
@@ -378,6 +416,44 @@ impl<T: Trait> Module<T> {
 
 	pub fn delete_member(id:T::AccountId){
 		Data::remove_account::<LinkedNodes<T>>(id);
+	}
+
+	fn get_filecoin_height() -> Result<u64,http::Error>{
+		let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(2_000));
+
+		let request = http::Request::get(
+			"http://127.0.0.1:1234/rpc/v0"
+		);
+		let request_body = b"{ \"method\": \"Filecoin.ChainHead\",\"params\": [], \"id\": 1}";
+		let request_body_vec = request_body.to_vec();
+
+		let pending = request
+			.deadline(deadline)
+			.body(vec![&request_body_vec])
+			.send()
+			.map_err(|_| http::Error::IoError)?;
+
+		let response = pending.try_wait(deadline)
+			.map_err(|_| http::Error::DeadlineReached)??;
+
+		if response.code != 200 {
+			return Err(http::Error::Unknown);
+		}
+
+		let body = response.body().collect::<Vec<u8>>();
+
+		let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+			http::Error::Unknown
+		})?;
+
+		Self::parse_height(body_str);
+
+		return Ok(0u64);
+	}
+
+	fn parse_height(head_str: &str){
+		let val = lite_json::parse_json(head_str);
+
 	}
 
 }

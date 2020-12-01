@@ -42,6 +42,19 @@ pub use txsender::{TxSender, TxMessage, TxType, SuperviseClient, PacketNonce, To
 mod filecoinapi;
 pub use filecoinapi::{get_nonce, message_create, send_fc_message};
 
+mod recover;
+pub use recover::recover;
+
+pub enum TssRole{
+	Manager,
+	Party,
+}
+
+pub enum SignatureType{
+	Btc,
+	General,
+}
+
 trait PrefixKey {
 	fn as_prefix_key(&self) -> Vec<u8>;
 }
@@ -58,16 +71,6 @@ impl PrefixKey for [u8] {
 		}
 		key.to_vec()
 	}
-}
-
-pub enum TssRole{
-	Manager,
-	Party,
-}
-
-pub enum SignatureType{
-	Btc,
-	General,
 }
 
 #[derive(Debug, Clone)]
@@ -254,7 +257,7 @@ type FcPubkeySender = mpsc::UnboundedSender<Vec<u8>>;
 pub fn start_tss<A, B, C, Block>(
 	client: Arc<C>,
 	pool: Arc<A>,
-	_keystore: u64/*KeyStorePtr*/,
+	_keystore: u64,
 	enable_tss_message_intermediary:bool,
 	senderbool: FcPubkeySender,
 	senderfc: FcPubkeySender,
