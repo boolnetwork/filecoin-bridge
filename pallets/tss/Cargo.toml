@@ -26,6 +26,11 @@ sp-std = { default-features = false, version = '2.0.0' }
 serde = {  default-features = false, version = '1.0', features = ['derive'], optional = true}
 sp-io = { default-features = false, version = '2.0.0' }
 lite-json = { version = '0.1', default-features = false }
+#forest_blocks = { git = "https://github.com/prz23/forest-no-submodule" , branch="main", features = ["json"] }
+#serde_json = "1.0"
+sp-runtime = { default-features = false, version = '2.0.0' }
+sp-core = { default-features = false, version = '2.0.0' }
+#lotus-api-forest ={ path = "../../bridge/api" }
 
 [dev-dependencies]
 sp-core = { default-features = false, version = '2.0.0' }

@@ -14,7 +14,15 @@ use frame_system::ensure_root;
 use sp_std::{ prelude::*, marker::PhantomData};
 use frame_support::sp_runtime::{RuntimeDebug,
 								offchain::{http, Duration, storage::StorageValueRef},};
-use lite_json;
+use lite_json::{self, JsonValue};
+
+// offchain worker
+use frame_support::{ debug, dispatch };
+use frame_system::offchain;
+use sp_runtime::transaction_validity::{
+	TransactionValidity, TransactionLongevity, ValidTransaction, InvalidTransaction
+};
+use sp_core::crypto::KeyTypeId;
 
 #[cfg(test)]
 mod mock;
@@ -328,6 +336,10 @@ decl_module! {
             Ok(())
         }
 
+        fn offchain_worker(block: T::BlockNumber) {
+            debug::info!("Hello World.");
+        }
+
     }
 }
 
@@ -430,6 +442,7 @@ impl<T: Trait> Module<T> {
 		let pending = request
 			.deadline(deadline)
 			.body(vec![&request_body_vec])
+			.add_header("Content-Type","application/json")
 			.send()
 			.map_err(|_| http::Error::IoError)?;
 
@@ -451,9 +464,50 @@ impl<T: Trait> Module<T> {
 		return Ok(0u64);
 	}
 
-	fn parse_height(head_str: &str){
+	fn parse_height(head_str: &str) {
 		let val = lite_json::parse_json(head_str);
+		let data = val.ok().and_then(|v|
+		    match v {
+				JsonValue::Object(obj) => {
+					// get height
+					let height = obj.clone().into_iter()
+						.find(|(k, _)| {
+							let mut chars_height = "Height".chars();
+							k.iter().all(|k| Some(*k) == chars_height.next())
+						})
+						.and_then(|v| match v.1 {
+							JsonValue::Number(height) => { Some(height.integer as u64) },
+							_ => { None },
+						});
 
+					// get cids
+					let cids = obj.into_iter()
+						.find(|(k, _)| {
+							let mut chars_cids = "Cids".chars();
+							k.iter().all(|k| Some(*k) == chars_cids.next())
+						})
+						.and_then(|v| match v.1{
+						    JsonValue::Array(svec) => {
+								let mut all_cids = Vec::new();
+								for val in svec{
+									match val {
+										JsonValue::String(s) => {
+											//let ss:Vec<u8> = s.into();
+											all_cids.push(s);
+										},
+										_ => {},
+									}
+								}
+								return Some(all_cids.clone());
+							},
+							_ => { return None },
+						});
+
+					return Some((height.unwrap(),cids.unwrap()));
+				},
+				_ => { return None },
+			}
+		);
 	}
 
 }

@@ -28,6 +28,7 @@ use forest_encoding::Cbor;
 use rpc::BlockMessages as forest_BlockMessages;
 use serde_json::*;
 use serde::*;
+use std::collections::BTreeSet;
 
 use std::time::Duration;
 lazy_static! {
@@ -193,6 +194,7 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciv
             }
             height = new_height;
             let mut message_set = HashMap::<Vec<u8>, DepositData<FCValue>>::new();
+            let mut message_cid_set = BTreeSet::new();
             let cids = ret.cids();
             for cid in cids {
                 println!("[filecoin block] cids = {:?} height={:?}", cid, height);
@@ -201,8 +203,11 @@ pub fn fc_message_fetch_parse<Block,B,C>(sender: MessageStreamS<FCValue>, _reciv
                 let signed_bls_messages = block_messages.bls_msg.clone();
                 for message in signed_bls_messages {
                     let (cid, revice_addr, who, val, from) = extract_message(message.clone());
-                    if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {
-                        message_set.insert(cid, (who, val, from));
+                    if message_cid_set.contains(&cid){}else{
+                        if revice_addr == Address::new_secp256k1(&recv_addr).unwrap() {
+                            message_cid_set.insert(cid.clone());
+                            message_set.insert(cid, (who, val, from));
+                        }
                     }
                 }
             }
