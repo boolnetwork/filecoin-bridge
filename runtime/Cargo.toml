@@ -59,7 +59,7 @@ pallet-tss = { default-features = false, version = '2.0.0', path = '../pallets/t
 #pallet-feed = { default-features = false, version = '2.0.0', path = '../pallets/feed' }
 #pallet-witness = { default-features = false, version = '2.0.0', path = '../pallets/witness' }
 node-primitives = { version = "2.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-
+pallet-ocw = { path = '../pallets/offchain-worker', default-features = false, version = '2.0.0' }
 
 [features]
 default = ['std']
@@ -100,5 +100,6 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
-    "pallet-tss/std"
+    'pallet-tss/std',
+    'pallet-ocw/std',
 ]
