@@ -6,5 +6,8 @@ members = [
     'node',
     'pallets/template',
     'runtime',
-    "bridge/bridge"
+    'bridge/bridge'
 ]
+
+[patch.crates-io]
+bs58 = { path = "./bridge/bs58"}
