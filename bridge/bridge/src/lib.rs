@@ -182,7 +182,7 @@ impl <V,B>TssSender<V,B>
 			withdrawdetail.value.clone(),
 		);
 		println!("cid {:?}",cid);
-		let message_to_sign = sp_io::hashing::blake2_256(&cid.to_bytes()[..]);
+		let message_to_sign = sp_io::hashing::blake2_256(&cid[..]);
 		let sig = self.key_sign(url, message_to_sign.to_vec(),
 								pubkey.clone(),SignatureType::General);
 		if sig.is_none(){
@@ -192,6 +192,10 @@ impl <V,B>TssSender<V,B>
 			message:message,
 			signature:forest_crypto::Signature::new_secp256k1(sig.unwrap()),
 		};
+
+		let res = signed_message.verify();
+		println!("withdraw fc result signature verify result : {:?}",res);
+
 		let cid = send_fc_message(signed_message);
 		println!("withdraw fc result ----------> {:?}",cid);
 	}

@@ -15,7 +15,7 @@ pub fn get_nonce(addr: forest_address::Address) -> u64 {
     ret
 }
 
-pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::UnsignedMessage ,forest_cid::Cid){
+pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::UnsignedMessage ,Vec<u8>){
     let from_addr = forest_address::Address::new_secp256k1(&from).unwrap();
     let to_addr = forest_address::Address::from_bytes(&to).unwrap();
     let nonce = get_nonce(from_addr.clone());
@@ -26,13 +26,12 @@ pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::Uns
     println!("from_addr {}",from_addr);
     println!("to_addr {}",to_addr);
     println!("nonce {}",nonce);
-    let unsigned_msg = forest_message::UnsignedMessage::builder()
-        .to(from_addr)
-        .sequence(nonce)
-        .from(to_addr)
-        .build()
-        .unwrap();
-
+//    let unsigned_msg = forest_message::UnsignedMessage::builder()
+//        .to(from_addr)
+//        .sequence(nonce)
+//        .from(to_addr)
+//        .build()
+//        .unwrap();
     let unsignedtx = forest_message::UnsignedMessage {
         version: 0,
         to: to_addr,
@@ -41,17 +40,24 @@ pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::Uns
         value: forest_vm::TokenAmount::from_u128(val).unwrap(),
         method_num: 0u64,
         params: Serialized::new(vec![0u8]),
-        gas_limit: 100000i64,
-        gas_fee_cap:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
-        gas_premium:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
+        gas_limit: 600000i64,
+        gas_fee_cap:forest_vm::TokenAmount::from_u128(600000u128).unwrap(),
+        gas_premium:forest_vm::TokenAmount::from_u128(600000u128).unwrap(),
     };
-    (unsigned_msg.clone(),unsigned_msg.cid().unwrap())
+    (unsignedtx.clone(),unsignedtx.to_signing_bytes())
 }
 
-pub fn send_fc_message(message: forest_message::SignedMessage) -> forest_cid::Cid {
-    let auth = env::var("auth").unwrap();
+pub fn send_fc_message(message: forest_message::SignedMessage) -> Result<forest_cid::Cid,String> {
+    let auth_res = env::var("auth");
+    if auth_res.is_err(){
+        return Err("no auth key".to_string());
+    }
+
+    let auth = auth_res.unwrap();
     let mut rt = tokioRuntime::new().unwrap();
     let http = lotus_api_forest::Http::new_auth("http://127.0.0.1:1234/rpc/v0",auth);
-    let ret = rt.block_on(http.mpool_push(&message)).unwrap();
-    ret
+    match rt.block_on(http.mpool_push(&message)){
+        Ok(cid) => Ok(cid),
+        Err(err) => Err("".to_string()),
+    }
 }
