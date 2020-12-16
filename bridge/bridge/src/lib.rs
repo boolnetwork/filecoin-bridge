@@ -151,9 +151,12 @@ impl <V,B>TssSender<V,B>
 		debug!(target:"keysign", "pubkey {:?}", pubkey);
 		match sigtype {
 			SignatureType::General => {
-				let _str_message = core::str::from_utf8(&message).unwrap();
-				let signature = sign_by_tss(message, str_url,pubkey).unwrap();
-				return Some(signature)
+				//let _str_message = core::str::from_utf8(&message).unwrap();
+				let res = sign_by_tss(message, str_url,pubkey);
+				if res.is_ok(){
+					return Some(res.unwrap());
+				}
+				return None;
 			},
 			SignatureType::Btc => {
 				let pubkey = self.spv.tss_pubkey();
@@ -178,11 +181,16 @@ impl <V,B>TssSender<V,B>
 			withdrawdetail.receiver.clone(),
 			withdrawdetail.value.clone(),
 		);
-		let sig = self.key_sign(url, cid.to_bytes(),
-								pubkey.clone(),SignatureType::General).unwrap();
+		println!("cid {:?}",cid);
+		let message_to_sign = sp_io::hashing::blake2_256(&cid.to_bytes()[..]);
+		let sig = self.key_sign(url, message_to_sign.to_vec(),
+								pubkey.clone(),SignatureType::General);
+		if sig.is_none(){
+			return;
+		}
 		let signed_message = forest_message::SignedMessage{
 			message:message,
-			signature:forest_crypto::Signature::new_secp256k1(sig),
+			signature:forest_crypto::Signature::new_secp256k1(sig.unwrap()),
 		};
 		let cid = send_fc_message(signed_message);
 		println!("withdraw fc result ----------> {:?}",cid);

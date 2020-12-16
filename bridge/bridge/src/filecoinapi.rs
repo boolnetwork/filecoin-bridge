@@ -6,6 +6,7 @@ use forest_vm::{self, Serialized};
 use forest_encoding::Cbor;
 use forest_crypto;
 use num_traits::cast::FromPrimitive;
+use std::env;
 
 pub fn get_nonce(addr: forest_address::Address) -> u64 {
     let mut rt = tokioRuntime::new().unwrap();
@@ -19,10 +20,16 @@ pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::Uns
     let to_addr = forest_address::Address::from_bytes(&to).unwrap();
     let nonce = get_nonce(from_addr.clone());
 
+    println!("from {:?}",from);
+    println!("to {:?}",to);
+    println!("val {:?}",val);
+    println!("from_addr {}",from_addr);
+    println!("to_addr {}",to_addr);
+    println!("nonce {}",nonce);
     let unsigned_msg = forest_message::UnsignedMessage::builder()
-        .to(to_addr)
+        .to(from_addr)
         .sequence(nonce)
-        .from(from_addr)
+        .from(to_addr)
         .build()
         .unwrap();
 
@@ -38,12 +45,13 @@ pub fn message_create(from:Vec<u8>,to:Vec<u8>,val:u128,) -> (forest_message::Uns
         gas_fee_cap:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
         gas_premium:forest_vm::TokenAmount::from_u128(100000u128).unwrap(),
     };
-    (unsignedtx.clone(),unsignedtx.cid().unwrap())
+    (unsigned_msg.clone(),unsigned_msg.cid().unwrap())
 }
 
 pub fn send_fc_message(message: forest_message::SignedMessage) -> forest_cid::Cid {
+    let auth = env::var("auth").unwrap();
     let mut rt = tokioRuntime::new().unwrap();
-    let http = lotus_api_forest::Http::new("http://127.0.0.1:1234/rpc/v0");
+    let http = lotus_api_forest::Http::new_auth("http://127.0.0.1:1234/rpc/v0",auth);
     let ret = rt.block_on(http.mpool_push(&message)).unwrap();
     ret
 }

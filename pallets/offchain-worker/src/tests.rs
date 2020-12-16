@@ -139,6 +139,7 @@ fn it_aggregates_the_price() {
 	});
 }
 
+//cargo test --color=always --package pallet-ocw --lib tests::should_make_http_call_and_parse_result -- --exact --nocapture
 #[test]
 fn should_make_http_call_and_parse_result() {
 	let (offchain, state) = testing::TestOffchainExt::new();
@@ -201,6 +202,7 @@ fn knows_how_to_mock_several_http_calls() {
 
 }
 
+//cargo test --color=always --package pallet-ocw --lib tests::should_submit_signed_transaction_on_chain -- --exact --nocapture
 #[test]
 fn should_submit_signed_transaction_on_chain() {
 	const PHRASE: &str = "news slush supreme milk chapter athlete soap sausage put clutch what kitten";
@@ -388,5 +390,38 @@ fn parse_price_works() {
 
 	for (json, expected) in test_data {
 		assert_eq!(expected, Example::parse_price(json));
+	}
+}
+
+//cargo test --color=always --package pallet-ocw --lib tests::height_should_make_http_call_and_parse_result -- --exact --nocapture
+#[test]
+fn height_should_make_http_call_and_parse_result() {
+	let (offchain, state) = testing::TestOffchainExt::new();
+	let mut t = sp_io::TestExternalities::default();
+	t.register_extension(OffchainExt::new(offchain));
+
+	price_oracle_response(&mut state.write());
+
+	t.execute_with(|| {
+		// when
+		let price = Example::fetch_price().unwrap();
+		// then
+		assert_eq!(price, 15523);
+	});
+}
+
+#[test]
+fn parse_hight_works() {
+	let test_data = vec![
+		("{\"Height\":216,\"Cids\":[{\"/\":\"bafy2bzaceb4a7u7y5rfwgdhmxz776r2zhye5b4bvufrgmobxebsmywt2eln4y\"}]}", Some((216,vec![b"bafy2bzaceb4a7u7y5rfwgdhmxz776r2zhye5b4bvufrgmobxebsmywt2eln4y".to_vec()]))),
+		("{\"Cids\":[{\"/\":\"aaaaaaa\"},{\"/\":\"bbbbbbb\"}],\"Height\":217}", Some((217,vec![b"aaaaaaa".to_vec(),b"bbbbbbb".to_vec()]))),
+		("{\"Cids\":[{\"/\":\"aa123\"},{\"/\":\"ewfdsc\"}],\"Height\":218}", Some((218,vec![b"aa123".to_vec(),b"ewfdsc".to_vec()]))),
+		("{\"Cidd\":[{\"/\":\"123\"},{\"/\":\"123\"}],\"Height\":998}", None),
+		("{\"Cids\":[{\"/\":\"aa123\"},{\"/\":\"ewfdsc\"}],\"FFF\":218}", None),
+	];
+
+	for (json, expected) in test_data {
+		let data = Example::parse_height(json);
+		assert_eq!(expected, data);
 	}
 }

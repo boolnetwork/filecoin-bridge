@@ -28,6 +28,21 @@ impl Http {
         }
     }
 
+    pub fn new_auth(url: &str, auth: String) -> Self {
+        let client = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("ClientBuilder config is valid; qed");
+
+        Self {
+            id: Default::default(),
+            url: url.into(),
+            bearer_auth: Some(auth),
+            client,
+        }
+    }
+
     async fn send_request(&self, request: &Request) -> Result<Response> {
         let builder = self.client.post(&self.url).json(request);
         let builder = if let Some(token) = &self.bearer_auth {

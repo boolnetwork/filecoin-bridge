@@ -116,6 +116,21 @@ impl<T: SigningTypes> SignedPayload<T> for PricePayload<T::Public, T::BlockNumbe
     }
 }
 
+/// Payload used by this example crate to hold price
+/// data required to submit a transaction.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+pub struct HeightPayload<Public, BlockNumber> {
+    block_number: BlockNumber,
+    price: u32,
+    public: Public,
+}
+
+impl<T: SigningTypes> SignedPayload<T> for HeightPayload<T::Public, T::BlockNumber> {
+    fn public(&self) -> T::Public {
+        self.public.clone()
+    }
+}
+
 decl_storage! {
     trait Store for Module<T: Trait> as ExampleOffchainWorker {
         /// A vector of recently submitted prices.
@@ -557,6 +572,7 @@ impl<T: Trait> Module<T> {
     ///
     /// Returns `None` when parsing failed or `Some(price in cents)` when parsing is successful.
     fn parse_price(price_str: &str) -> Option<u32> {
+        debug::info!("===lotus tipset===: {:?}", price_str);
         let val = lite_json::parse_json(price_str);
         let price = val.ok().and_then(|v| match v {
             JsonValue::Object(obj) => {
@@ -662,6 +678,101 @@ impl<T: Trait> Module<T> {
             .propagate(true)
             .build()
     }
+
+    fn get_filecoin_height() -> Result<u64,http::Error>{
+        let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(2_000));
+
+        let request = http::Request::get(
+            "http://127.0.0.1:1234/rpc/v0"
+        );
+        let request_body = b"{ \"method\": \"Filecoin.ChainHead\",\"params\": [], \"id\": 1}";
+        let request_body_vec = request_body.to_vec();
+
+        let pending = request
+            .deadline(deadline)
+            .body(vec![&request_body_vec])
+            .add_header("Content-Type","application/json")
+            .send()
+            .map_err(|_| http::Error::IoError)?;
+
+        let response = pending.try_wait(deadline)
+            .map_err(|_| http::Error::DeadlineReached)??;
+
+        if response.code != 200 {
+            return Err(http::Error::Unknown);
+        }
+
+        let body = response.body().collect::<Vec<u8>>();
+
+        let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+            http::Error::Unknown
+        })?;
+
+        Self::parse_height(body_str);
+
+        return Ok(0u64);
+    }
+
+    fn parse_height(head_str: &str) -> Option<(u64,Vec<Vec<u8>>)>{
+        debug::info!("===lotus tipset===: {:?}", head_str);
+        let val = lite_json::parse_json(head_str);
+        let data = val.ok().and_then(|v|
+            match v {
+                JsonValue::Object(obj) => {
+                    // get height
+                    let height = obj.clone().into_iter()
+                        .find(|(k, _)| {
+                            let mut chars_height = "Height".chars();
+                            k.iter().all(|k| Some(*k) == chars_height.next())
+                        })
+                        .and_then(|v| match v.1 {
+                            JsonValue::Number(height) => { Some(height.integer as u64) },
+                            _ => { None },
+                        });
+
+                    // get cids
+                    let cids = obj.into_iter()
+                        .find(|(k, _)| {
+                            let mut chars_cids = "Cids".chars();
+                            k.iter().all(|k| Some(*k) == chars_cids.next())
+                        })
+                        .and_then(|v| match v.1{
+                            JsonValue::Array(svec) => {
+                                let mut all_cids = Vec::new();
+                                for val in svec{
+                                    match val {
+                                        JsonValue::Object(obj) => {
+                                            for o in obj{
+                                                match o.1{
+                                                    JsonValue::String(s) => {
+                                                        let mut vec_u8 = Vec::new();
+                                                        for each in s{
+                                                            vec_u8.push(each as u8);
+                                                        }
+                                                        all_cids.push(vec_u8);
+                                                    },
+                                                    _=>{},
+                                                }
+                                            }
+                                        },
+                                        _ => {},
+                                    }
+                                }
+                                return Some(all_cids.clone());
+                            },
+                            _ => { return None },
+                        });
+                    if height.is_none() || cids.is_none(){
+                        return None;
+                    }
+                    return Some((height.unwrap(),cids.unwrap()));
+                },
+                _ => { return None },
+            }
+        );
+        return data;
+    }
+
 }
 
 #[allow(deprecated)] // ValidateUnsigned
